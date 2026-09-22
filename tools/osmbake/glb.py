@@ -77,6 +77,12 @@ def write_glb(path: Path, chunks: dict[str, dict[str, MeshBuilder]]) -> None:
         meshes.append({"name": chunk_name, "primitives": primitives})
         nodes.append({"name": chunk_name, "mesh": len(meshes) - 1})
 
+    # 노드가 하나도 없으면 glTF 스키마 위반이다(scene.nodes 는 minItems 1,
+    # buffer.byteLength 는 minimum 1). 빈 파일을 조용히 남기면 Godot 임포트가
+    # 실패할 때 원인이 여기까지 안 보이므로 여기서 끊는다.
+    if not nodes:
+        raise ValueError("빈 지오메트리로는 .glb 를 쓸 수 없다")
+
     _pad4(binary)
     gltf = {
         "asset": {"version": "2.0", "generator": "bus-driver osmbake"},

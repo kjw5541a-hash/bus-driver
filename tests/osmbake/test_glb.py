@@ -80,6 +80,14 @@ class TestWriteGlb(unittest.TestCase):
         self.assertEqual(position["min"], [0.0, 0.0, 0.0])
         self.assertEqual(position["max"], [1.0, 0.0, 1.0])
 
+    def test_빈_입력은_거부한다(self):
+        # nodes 가 비면 scene.nodes minItems 1, buffer.byteLength minimum 1 을
+        # 어기는 파일이 나온다. 조용히 쓰지 말고 끊어야 한다.
+        for chunks in ({}, {"chunk_0_0": {"road": MeshBuilder()}}):
+            with self.assertRaises(ValueError):
+                write_glb(self.path, chunks)
+            self.assertFalse(self.path.exists())
+
 
 if __name__ == "__main__":
     unittest.main()
