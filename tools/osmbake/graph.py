@@ -6,7 +6,7 @@ way 는 교차점(둘 이상의 way 가 공유하는 노드)에서 쪼갠다. �
 highway=busway 는 서울 중앙버스전용차선이다. access=no 가 붙어 있지만 버스는
 다닐 수 있으므로 반드시 포함한다. 이 등급을 빠뜨리면 서울 노선의 경로가 끊긴다.
 """
-from collections import Counter, defaultdict
+from collections import Counter
 from dataclasses import dataclass
 
 from .geo import haversine
@@ -65,7 +65,8 @@ def build_graph(elements: list[dict]) -> RoadGraph:
         oneway = tags.get("oneway", "no")
         forward = oneway != "-1"
         backward = oneway not in ("yes", "true", "1")
-        bus_only = tags.get("highway") == "busway" or tags.get("access") == "no"
+        bus_only = (tags.get("highway") == "busway"
+                    or (tags.get("access") == "no" and tags.get("bus") == "designated"))
 
         # 교차점 또는 way 끝에서 끊어 조각으로 나눈다
         split_at = [0]

@@ -71,6 +71,21 @@ class TestBuildGraph(unittest.TestCase):
                           "tags": {"building": "yes"}}])
         self.assertEqual(g.adj, {})
 
+    def test_access_no_와_bus_designated_는_bus_only(self):
+        # access=no + bus=designated 인 일반 도로는 버스전용으로 표시
+        g = build_graph([way(1, [10, 11], [(37.5, 127.0), (37.5, 127.001)],
+                             highway="residential", access="no", bus="designated")])
+        self.assertEqual(len(g.adj[10]), 1)
+        self.assertTrue(g.adj[10][0].bus_only)
+
+    def test_access_no_만으로는_bus_only_아님(self):
+        # access=no 만 붙고 bus 태그 없는 일반 도로는 버스전용 아님
+        # (그래프에는 여전히 들어있음 — 이것은 표시일 뿐 주행 여부가 아님)
+        g = build_graph([way(1, [10, 11], [(37.5, 127.0), (37.5, 127.001)],
+                             highway="residential", access="no")])
+        self.assertEqual(len(g.adj[10]), 1)
+        self.assertFalse(g.adj[10][0].bus_only)
+
 
 if __name__ == "__main__":
     unittest.main()
