@@ -27,8 +27,8 @@ PATCH_Y = 0.01
 def road_width(tags: dict) -> float:
     """태그에서 도로 폭을 추정한다.
 
-    lanes 태그가 있으면 차선 수로 계산한다.
-    lanes가 파싱할 수 없으면 highway 등급으로 떨어진다.
+    lanes 태그가 있으면 차선 수로 계산한다(1 이상일 때만).
+    lanes가 파싱할 수 없거나 1 미만이면 highway 등급으로 떨어진다.
     highway가 _link로 끝나면 7m이다.
     알 수 없는 등급은 기본값 7m이다.
     최소 폭은 4m이다.
@@ -37,7 +37,9 @@ def road_width(tags: dict) -> float:
     lanes = tags.get("lanes")
     if lanes is not None:
         try:
-            return max(LANE_WIDTH * int(lanes), MIN_WIDTH)
+            lanes_int = int(lanes)
+            if lanes_int >= 1:
+                return max(LANE_WIDTH * lanes_int, MIN_WIDTH)
         except (TypeError, ValueError):
             pass
     if highway.endswith("_link"):
@@ -101,10 +103,11 @@ def build_roads(ways: list[dict], projector: Projector) -> MeshBuilder:
                 (x2 - nx, 0.0, z2 - nz), (x1 - nx, 0.0, z1 - nz),
             ], UP)
 
-        # 꺾이는 지점(중간 점)에 작은 사각형 패치를 붙여 틈을 없앤다
+        # 꺾이는 지점(중간 점)에 작은 사각형 패치를 붙여 틈을 없앤다.
+        # 점 순서는 리본과 같은 방향(위에서 봤을 때 CCW = glTF front-face)이어야 한다.
         for x, z in points[1:-1]:
             builder.add_polygon([
-                (x - half, PATCH_Y, z - half), (x + half, PATCH_Y, z - half),
-                (x + half, PATCH_Y, z + half), (x - half, PATCH_Y, z + half),
+                (x - half, PATCH_Y, z + half), (x + half, PATCH_Y, z + half),
+                (x + half, PATCH_Y, z - half), (x - half, PATCH_Y, z - half),
             ], UP)
     return builder

@@ -26,6 +26,10 @@ class TestRoadWidth(unittest.TestCase):
     def test_차선이_아주_적어도_최소_4m(self):
         self.assertGreaterEqual(road_width({"highway": "service", "lanes": "1"}), 4.0)
 
+    def test_lanes_0과_음수는_등급_기본값으로_떨어진다(self):
+        self.assertEqual(road_width({"highway": "primary", "lanes": "0"}), 16.0)
+        self.assertEqual(road_width({"highway": "primary", "lanes": "-1"}), 16.0)
+
 
 class TestMeshBuilder(unittest.TestCase):
     def test_사각형은_삼각형_둘(self):
@@ -40,6 +44,20 @@ class TestMeshBuilder(unittest.TestCase):
         builder = MeshBuilder()
         builder.add_polygon([(0, 0, 0), (1, 0, 0)], (0, 1, 0))
         self.assertEqual(builder.triangle_count(), 0)
+
+
+def facing_y(builder):
+    """삼각형마다 (v2-v1) × (v3-v1) 의 y 성분을 낸다.
+
+    양수면 위에서 봤을 때 반시계 방향 = glTF 의 앞면이 위를 향한다는 뜻이다.
+    저장된 normals 배열은 add_polygon 이 받은 값을 그대로 돌려줄 뿐이라
+    정점 순서가 뒤집혀도 안 바뀐다. 향면은 정점 순서에서 직접 유도해야 한다.
+    """
+    for i in range(0, len(builder.indices), 3):
+        p1, p2, p3 = (builder.positions[builder.indices[i + k]] for k in range(3))
+        v1 = (p2[0] - p1[0], p2[1] - p1[1], p2[2] - p1[2])
+        v2 = (p3[0] - p1[0], p3[1] - p1[1], p3[2] - p1[2])
+        yield v1[2] * v2[0] - v1[0] * v2[2]
 
 
 class TestBuildRoads(unittest.TestCase):
@@ -80,6 +98,34 @@ class TestBuildRoads(unittest.TestCase):
         builder = build_roads(
             [self._way([(37.500, 127.000), (37.500, 127.000)])], self.projector)
         self.assertEqual(builder.triangle_count(), 0)
+
+    def test_리본_삼각형이_위를_향한다(self):
+        """리본의 모든 삼각형이 위를 향하는지 확인 (cross product y > 0)."""
+        builder = build_roads(
+            [self._way([(37.500, 127.000), (37.500, 127.001)])], self.projector)
+
+        for index, y in enumerate(facing_y(builder)):
+            self.assertGreater(y, 0, f"삼각형 {index} 가 아래를 향한다 (y={y})")
+
+    def test_꺾이는_경로의_패치_삼각형도_위를_향한다(self):
+        """꺾이는 점의 패치가 위를 향하는지 확인."""
+        builder = build_roads(
+            [self._way([(37.500, 127.000), (37.500, 127.001), (37.501, 127.001)])],
+            self.projector)
+
+        for index, y in enumerate(facing_y(builder)):
+            self.assertGreater(y, 0, f"삼각형 {index} 가 아래를 향한다 (y={y})")
+
+    def test_리본_양쪽_가장자리_간격이_도로_폭과_같다(self):
+        """동서 방향 직선에서 리본 너비(z_max - z_min)가 road_width 와 같은지 확인."""
+        way = self._way([(37.500, 127.000), (37.500, 127.001)], highway="primary")
+        builder = build_roads([way], self.projector)
+
+        z_coords = [pos[2] for pos in builder.positions]
+        z_width = max(z_coords) - min(z_coords)
+        road_wid = road_width(way["tags"])
+
+        self.assertAlmostEqual(z_width, road_wid, places=5)
 
 
 if __name__ == "__main__":
