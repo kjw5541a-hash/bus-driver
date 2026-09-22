@@ -34,7 +34,13 @@ fi
 failed=0
 for route in "${routes[@]}"; do
 	echo "=== $route ==="
-	python3 -m tools.osmbake.cli bake "$route"
+	# set -e 아래에서 베이크가 실패하면 스크립트 전체가 죽어 나머지 노선을
+	# 아예 안 돈다. 노선 하나의 실패가 다른 노선의 검증을 막으면 안 된다.
+	if ! python3 -m tools.osmbake.cli bake "$route"; then
+		echo "$route: BAKE FAIL"
+		failed=1
+		continue
+	fi
 	"$GODOT_BIN" --headless --import >/dev/null 2>&1 || true
 	# --quit-after 는 정상 종료(get_tree().quit())를 못 했을 때의 안전망 프레임 상한.
 	# 20km 노선을 32km/h 로 달리면 약 135,000 프레임(60fps 기준)인데 교착/우회 여유를

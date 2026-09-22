@@ -120,17 +120,25 @@ func _check_ground_coverage() -> void:
 		var from_point := route[i]
 		var to_point := route[i + 1]
 		var steps := int(from_point.distance_to(to_point) / SAMPLE_STEP) + 1
+		# t 는 [0, 1) 이다. 구간 끝점은 다음 구간의 t=0 이 맡는다.
 		for step in range(steps):
 			var point := from_point.lerp(to_point, float(step) / float(steps))
-			var origin := point + Vector3.UP * 30.0
-			var query := PhysicsRayQueryParameters3D.create(origin, origin + Vector3.DOWN * 60.0)
 			total += 1
-			if not space.intersect_ray(query).is_empty():
+			if _has_ground(space, point):
 				hits += 1
+	# 마지막 구간의 끝점(노선 종점)만은 뒤를 이을 구간이 없어 빠진다. 직접 쏜다.
+	total += 1
+	if _has_ground(space, route[-1]):
+		hits += 1
 	var ratio := float(hits) / float(max(total, 1))
 	print("지면 커버리지 %.1f%% (%d/%d, %.0fm 간격)" % [ratio * 100.0, hits, total, SAMPLE_STEP])
 	if ratio < GROUND_COVERAGE_MIN:
 		failures.append("지면 커버리지 %.3f < %.2f" % [ratio, GROUND_COVERAGE_MIN])
+
+func _has_ground(space: PhysicsDirectSpaceState3D, point: Vector3) -> bool:
+	var origin := point + Vector3.UP * 30.0
+	var query := PhysicsRayQueryParameters3D.create(origin, origin + Vector3.DOWN * 60.0)
+	return not space.intersect_ray(query).is_empty()
 
 func _check_stop_names() -> void:
 	var stops: Array = meta["stops"]
