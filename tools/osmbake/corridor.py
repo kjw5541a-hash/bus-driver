@@ -56,12 +56,24 @@ def signal_candidates(graph: RoadGraph, osm_signal_nodes: list[dict],
         signals.append({"x": round(xz[0], 2), "z": round(xz[1], 2),
                         "source": "osm", "roads": 0})
 
+    # adj 는 나가는 엣지만 담는다. 일방통행으로 들어오기만 하는 도로도 교차로의
+    # 한 갈래이므로 양쪽 끝 모두에 엣지를 달아 인접 인덱스를 만든다.
+    incident: dict[int, list] = {}
+    for edges in graph.adj.values():
+        for edge in edges:
+            incident.setdefault(edge.start, []).append(edge)
+            incident.setdefault(edge.end, []).append(edge)
+
     taken = {(s["x"], s["z"]) for s in signals}
-    for node_id, edges in graph.adj.items():
-        major = {e.way_id for e in edges if e.highway in MAJOR_HIGHWAYS}
-        branches = {e.end for e in edges}
-        if len(major) < 2 or len(branches) < 3:
+    for node_id, edges in incident.items():
+        # "주요도로 3개 이상"은 서로 다른 way_id 가 아니라 갈래 수로 센다.
+        # 간선 둘이 십자로 만나는 전형적 신호 교차로는 way_id 가 2개뿐이다.
+        major_branches = {edge.end if edge.start == node_id else edge.start
+                          for edge in edges if edge.highway in MAJOR_HIGHWAYS}
+        if len(major_branches) < 3:
             continue
+        branches = {edge.end if edge.start == node_id else edge.start
+                    for edge in edges}
         lat, lon = graph.coords[node_id]
         xz = projector.to_xz(lat, lon)
         if _nearest_on_path(path_xz, xz)[0] > radius_m:
