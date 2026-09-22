@@ -1,0 +1,4 @@
+__pycache__/
+*.pyc
+.godot/
+tools/osmbake/work/
