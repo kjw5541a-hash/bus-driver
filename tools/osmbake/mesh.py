@@ -168,10 +168,19 @@ def build_buildings(ways: list[dict], projector: Projector) -> MeshBuilder:
         if "building" not in tags or "geometry" not in w:
             continue
         ring = [projector.to_xz(g["lat"], g["lon"]) for g in w["geometry"]]
-        if len(ring) >= 2 and ring[0] == ring[-1]:
-            ring = ring[:-1]
+        # 앞 점과 같은 점을 전부 턴다. i=0 이 ring[-1] 과 비교되므로 OSM 이
+        # 링을 닫느라 붙인 첫점 중복과 편집 아티팩트로 생긴 내부 중복을 한
+        # 번에 처리한다. 중복이 남으면 ear clipping 이 삼각형을 다 못 내고
+        # 남은 것을 조용히 버려서 지붕에 구멍이 뚫린다.
+        ring = [p for i, p in enumerate(ring) if p != ring[i - 1]]
         if len(ring) < 3:
             continue
+        # OSM 은 건물 링 방향을 보장하지 않는다. 벽 루프는 링 순서를 그대로
+        # 쓰므로(triangulate() 처럼 내부에서 정규화하지 않는다) 여기서
+        # 정규화하지 않으면 실제 데이터의 절반가량이 벽이 안쪽을 향한다.
+        # 음수 signed_area 가 바깥을 향하는 방향이다.
+        if _signed_area(ring) > 0:
+            ring = list(reversed(ring))
 
         height = building_height(tags)
         for (x1, z1), (x2, z2) in zip(ring, ring[1:] + ring[:1]):

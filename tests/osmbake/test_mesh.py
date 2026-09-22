@@ -1,7 +1,8 @@
 """도로 폭 추정과 도로 리본 메쉬."""
+import math
 import unittest
 
-from tools.osmbake.geo import Projector
+from tools.osmbake.geo import METERS_PER_DEG_LAT, Projector
 from tools.osmbake.mesh import (MeshBuilder, build_buildings, build_roads,
                                  building_height, road_width, triangulate)
 
@@ -224,6 +225,63 @@ class TestBuildBuildings(unittest.TestCase):
         for index, y in enumerate(roof_ys):
             self.assertGreater(y, 0, f"지붕 삼각형 {index} 가 아래를 향한다 (y={y})")
 
+    def _wall_facings(self, builder):
+        """벽 삼각형마다 (법선 · 중심에서 바깥으로 가는 방향) 내적을 낸다.
+
+        양수면 바깥을 향한다는 뜻이다. 이 중심 기준 판정은 볼록 footprint
+        에서만 유효하다 — 오목한 링에서는 오목한 쪽 벽이 거짓 음성을 낸다.
+        """
+        positions = builder.positions
+        cx = sum(p[0] for p in positions) / len(positions)
+        cz = sum(p[2] for p in positions) / len(positions)
+        for i in range(0, len(builder.indices), 3):
+            p1, p2, p3 = (positions[builder.indices[i + k]] for k in range(3))
+            if p1[1] == p2[1] == p3[1]:
+                continue  # 수평면은 벽이 아니다
+            v1 = tuple(p2[k] - p1[k] for k in range(3))
+            v2 = tuple(p3[k] - p1[k] for k in range(3))
+            nx = v1[1] * v2[2] - v1[2] * v2[1]
+            nz = v1[0] * v2[1] - v1[1] * v2[0]
+            mx = (p1[0] + p2[0] + p3[0]) / 3 - cx
+            mz = (p1[2] + p2[2] + p3[2]) / 3 - cz
+            yield nx * mx + nz * mz
+
+    def test_뒤집힌_링으로도_벽이_바깥을_향한다(self):
+        """OSM 은 건물 링 방향을 보장하지 않는다. 양쪽 다 바깥을 향해야 한다."""
+        square = [(37.5000, 127.0000), (37.5000, 127.0002),
+                  (37.5002, 127.0002), (37.5002, 127.0000)]
+        for name, coords in (("원래", square), ("뒤집은", list(reversed(square)))):
+            builder = build_buildings([self._building(coords)], self.projector)
+            facings = list(self._wall_facings(builder))
+            self.assertEqual(len(facings), 8)
+            for index, dot in enumerate(facings):
+                self.assertGreater(dot, 0,
+                                   f"{name} 방향 벽 삼각형 {index} 가 안쪽을 향한다")
+
+    def test_오목한_건물도_지붕이_온전하고_위를_향한다(self):
+        """오목 footprint 를 build_buildings 끝까지 통과시킨다."""
+        l_shape = [(37.5000, 127.0000), (37.5000, 127.0006),
+                   (37.50015, 127.0006), (37.50015, 127.0003),
+                   (37.5003, 127.0003), (37.5003, 127.0000)]
+        builder = build_buildings([self._building(l_shape)], self.projector)
+        # 벽 6개(삼각형 12개) + 지붕(정점 6개면 삼각형 4개)
+        roof_ys = list(facing_y(builder))[12:]
+        self.assertEqual(len(roof_ys), len(l_shape) - 2)
+        for index, y in enumerate(roof_ys):
+            self.assertGreater(y, 0, f"지붕 삼각형 {index} 가 아래를 향한다 (y={y})")
+
+    def test_연속_중복_정점이_있어도_지붕이_온전하다(self):
+        """OSM 편집 아티팩트로 생긴 중복 정점이 지붕에 구멍을 내면 안 된다."""
+        square = [(37.5000, 127.0000), (37.5000, 127.0002),
+                  (37.5002, 127.0002), (37.5002, 127.0000)]
+        dupe = [square[0], square[1], square[1], square[2], square[3]]
+        builder = build_buildings([self._building(dupe)], self.projector)
+        # 중복을 턴 뒤 정점 4개: 벽 4개(삼각형 8개) + 지붕 삼각형 2개
+        self.assertEqual(builder.triangle_count(), 10)
+        roof_ys = list(facing_y(builder))[8:]
+        self.assertEqual(len(roof_ys), 2)
+        for y in roof_ys:
+            self.assertGreater(y, 0)
 
 if __name__ == "__main__":
     unittest.main()
