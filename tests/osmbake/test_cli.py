@@ -27,6 +27,15 @@ class TestFindTerminalNode(unittest.TestCase):
         nodes = [stop(99, 37.50002, 127.00001, "기점")]
         self.assertEqual(cli.find_terminal_node(graph, nodes, "기점"), 10)
 
+    def test_나가는_엣지가_없는_노드는_고르지_않는다(self):
+        # 정류장에 더 가깝더라도 엣지가 없는 노드를 고르면 A* 가 무조건
+        # 실패한다. 일방통행 끝점 11 이 정류장에 더 가깝지만 10 을 골라야 한다.
+        graph = build_graph([way(1, [10, 11],
+                                 [(37.500, 127.000), (37.500, 127.002)],
+                                 oneway="yes")])
+        nodes = [stop(99, 37.500, 127.00199, "종점")]
+        self.assertEqual(cli.find_terminal_node(graph, nodes, "종점"), 10)
+
     def test_이름이_없으면_None(self):
         graph = build_graph([way(1, [10, 11],
                                  [(37.500, 127.000), (37.500, 127.002)])])

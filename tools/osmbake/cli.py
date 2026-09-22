@@ -43,10 +43,14 @@ def build_queries(spec: RouteSpec) -> tuple[str, str]:
 def find_terminal_node(graph, stop_nodes: list[dict], name: str) -> int | None:
     """기점/종점 정류장 이름에 가장 가까운 도로 노드."""
     matches = [n for n in stop_nodes if n.get("tags", {}).get("name") == name]
-    if not matches or not graph.coords:
+    if not matches or not graph.adj:
         return None
     target = (matches[0]["lat"], matches[0]["lon"])
-    return min(graph.coords,
+    # graph.coords 에는 나가는 엣지가 하나도 없는 노드도 들어 있다(일방통행의
+    # 끝점 등). 기점/종점은 A* 의 출발·도착이라 그런 노드를 고르면 탐색이
+    # 무조건 실패한다. 실제로 100번·654번이 여기서 막혔다. 엣지가 있는
+    # 노드로만 후보를 좁힌다.
+    return min(graph.adj,
                key=lambda node_id: haversine(graph.coords[node_id], target))
 
 
@@ -91,12 +95,13 @@ def bake(route_id: str, *, cache_dir: Path = CACHE_DIR, out_dir: Path = OUT_DIR,
     # 3. route
     stop_nodes = [e for e in elements if e.get("type") == "node"
                   and e.get("tags", {}).get("highway") == "bus_stop"]
-    start = find_terminal_node(graph, stop_nodes, spec.from_stop)
-    goal = find_terminal_node(graph, stop_nodes, spec.to_stop)
+    from_anchor, to_anchor = spec.anchors()
+    start = find_terminal_node(graph, stop_nodes, from_anchor)
+    goal = find_terminal_node(graph, stop_nodes, to_anchor)
     if start is None or goal is None:
         raise RuntimeError(
             f"{route_id}: 기점/종점 정류장을 찾지 못했다 "
-            f"({spec.from_stop} → {spec.to_stop})")
+            f"({from_anchor} → {to_anchor})")
     edges = astar(graph, start, goal, preferred_ways=member_way_ids)
     if not edges:
         raise RuntimeError(f"{route_id}: 기점에서 종점까지 경로가 없다")

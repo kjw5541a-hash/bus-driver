@@ -17,6 +17,15 @@ class RouteSpec:
     name: str
     from_stop: str
     to_stop: str
+    # A* 기점/종점을 잡을 OSM 정류장 이름. 비어 있으면 from_stop/to_stop 을
+    # 쓴다. 노선 relation 의 from/to 태그는 속칭이라 실제 정류장 노드 이름과
+    # 다를 수 있어서(예: 100번의 "하계동") 따로 둔다.
+    from_anchor: str = ""
+    to_anchor: str = ""
+
+    def anchors(self) -> tuple[str, str]:
+        return (self.from_anchor or self.from_stop,
+                self.to_anchor or self.to_stop)
 
 
 ROUTES: dict[str, RouteSpec] = {
@@ -26,7 +35,8 @@ ROUTES: dict[str, RouteSpec] = {
         "홍은2동주민센터", "신촌전철역"),
     # 간선. 중앙버스전용차선 3.3 km 실재. 스파이크에서 주행 검증된 노선.
     "seoul-100": RouteSpec(
-        "seoul-100", 2895724, "서울 버스 100", "하계동", "용산구청"),
+        "seoul-100", 2895724, "서울 버스 100", "하계동", "용산구청",
+        from_anchor="상명초등학교"),   # OSM 에 "하계동" 이라는 정류장 노드가 없다
     # 장거리. 데이터 97% 연결.
     "seoul-654": RouteSpec(
         "seoul-654", 2907286, "서울 버스 654",
