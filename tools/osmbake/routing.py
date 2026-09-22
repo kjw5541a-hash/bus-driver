@@ -5,8 +5,9 @@
 다시 만든다. 멤버가 끊긴 구간은 주변 도로로 우회한다.
 """
 import heapq
+import math
 
-from .geo import haversine
+from .geo import haversine, Projector
 from .graph import Edge, RoadGraph
 
 
@@ -64,3 +65,69 @@ def path_latlon(graph: RoadGraph, edges: list[Edge]) -> list[tuple[float, float]
         node_points = [graph.coords[n] for n in edge.node_ids]
         points += node_points[1:] if points else node_points
     return points
+
+
+def project_path(path: list[tuple[float, float]],
+                 projector: Projector) -> list[tuple[float, float]]:
+    """(위도, 경도) 폴리라인을 (x, z) 로 옮긴다."""
+    return [projector.to_xz(lat, lon) for lat, lon in path]
+
+
+def _nearest_on_path(path_xz: list[tuple[float, float]],
+                     point: tuple[float, float]) -> tuple[float, float]:
+    """(경로까지 거리, 경로 진행도 미터). 각 구간에 수선의 발을 내려 가장 가까운 것."""
+    px, pz = point
+    best = (float("inf"), 0.0)
+    travelled = 0.0
+    for (x1, z1), (x2, z2) in zip(path_xz, path_xz[1:]):
+        dx, dz = x2 - x1, z2 - z1
+        seg_len = math.hypot(dx, dz)
+        if seg_len < 1e-9:
+            continue
+        t = ((px - x1) * dx + (pz - z1) * dz) / (seg_len * seg_len)
+        t = max(0.0, min(1.0, t))
+        foot_x, foot_z = x1 + t * dx, z1 + t * dz
+        distance = math.hypot(px - foot_x, pz - foot_z)
+        if distance < best[0]:
+            best = (distance, travelled + t * seg_len)
+        travelled += seg_len
+    return best
+
+
+def snap_stops(path_xz: list[tuple[float, float]], stop_nodes: list[dict],
+               projector: Projector, *, max_dist_m: float = 30.0,
+               merge_within_m: float = 50.0) -> list[dict]:
+    """정류장 노드를 경로에 스냅한다. 순서는 경로 진행도가 정한다."""
+    snapped = []
+    for node in stop_nodes:
+        point = projector.to_xz(node["lat"], node["lon"])
+        distance, progress = _nearest_on_path(path_xz, point)
+        if distance > max_dist_m:
+            continue
+        snapped.append({
+            "name": node.get("tags", {}).get("name", ""),
+            "x": round(point[0], 2),
+            "z": round(point[1], 2),
+            "progress_m": round(progress, 1),
+            "osm_node": node["id"],
+            "_distance": distance,
+        })
+
+    snapped.sort(key=lambda s: s["progress_m"])
+
+    merged: list[dict] = []
+    for stop in snapped:
+        previous = merged[-1] if merged else None
+        same_place = (previous is not None
+                      and previous["name"] == stop["name"]
+                      and stop["progress_m"] - previous["progress_m"] <= merge_within_m)
+        if same_place:
+            # 경로에 더 가까운 쪽을 남긴다
+            if stop["_distance"] < previous["_distance"]:
+                merged[-1] = stop
+            continue
+        merged.append(stop)
+
+    for stop in merged:
+        del stop["_distance"]
+    return merged
