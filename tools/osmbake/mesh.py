@@ -230,3 +230,23 @@ def build_roads(ways: list[dict], projector: Projector) -> MeshBuilder:
                 (x + half, PATCH_Y, z - half), (x - half, PATCH_Y, z - half),
             ], UP)
     return builder
+
+
+CHUNK_SIZE_M = 200.0
+
+
+def split_chunks(builder: MeshBuilder,
+                 chunk_size: float = CHUNK_SIZE_M) -> dict[str, MeshBuilder]:
+    """삼각형을 격자 칸으로 나눈다. 삼각형은 첫 정점이 속한 칸으로 통째로 간다."""
+    chunks: dict[str, MeshBuilder] = {}
+    for offset in range(0, len(builder.indices), 3):
+        tri = builder.indices[offset:offset + 3]
+        x, _y, z = builder.positions[tri[0]]
+        key = f"chunk_{math.floor(x / chunk_size)}_{math.floor(z / chunk_size)}"
+        chunk = chunks.setdefault(key, MeshBuilder())
+        base = len(chunk.positions)
+        for index in tri:
+            chunk.positions.append(builder.positions[index])
+            chunk.normals.append(builder.normals[index])
+        chunk.indices += [base, base + 1, base + 2]
+    return chunks

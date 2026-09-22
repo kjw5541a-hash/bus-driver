@@ -4,7 +4,8 @@ import unittest
 
 from tools.osmbake.geo import METERS_PER_DEG_LAT, Projector
 from tools.osmbake.mesh import (MeshBuilder, build_buildings, build_roads,
-                                 building_height, road_width, triangulate)
+                                 building_height, road_width, triangulate,
+                                 split_chunks)
 
 
 class TestRoadWidth(unittest.TestCase):
@@ -282,6 +283,40 @@ class TestBuildBuildings(unittest.TestCase):
         self.assertEqual(len(roof_ys), 2)
         for y in roof_ys:
             self.assertGreater(y, 0)
+
+
+class TestSplitChunks(unittest.TestCase):
+    def _builder_with(self, squares):
+        builder = MeshBuilder()
+        for cx, cz in squares:
+            builder.add_polygon([(cx, 0, cz), (cx + 1, 0, cz),
+                                 (cx + 1, 0, cz + 1), (cx, 0, cz + 1)], (0, 1, 0))
+        return builder
+
+    def test_한_칸에_다_들어가면_청크_하나(self):
+        chunks = split_chunks(self._builder_with([(0, 0), (10, 10)]), 200.0)
+        self.assertEqual(len(chunks), 1)
+
+    def test_멀리_떨어지면_청크가_나뉜다(self):
+        chunks = split_chunks(self._builder_with([(0, 0), (500, 500)]), 200.0)
+        self.assertEqual(len(chunks), 2)
+
+    def test_삼각형_총수는_보존된다(self):
+        builder = self._builder_with([(0, 0), (500, 500), (1000, 0)])
+        chunks = split_chunks(builder, 200.0)
+        self.assertEqual(sum(c.triangle_count() for c in chunks.values()),
+                         builder.triangle_count())
+
+    def test_청크_이름은_격자_좌표(self):
+        chunks = split_chunks(self._builder_with([(0, 0)]), 200.0)
+        self.assertEqual(list(chunks), ["chunk_0_0"])
+
+    def test_음수_좌표도_처리한다(self):
+        chunks = split_chunks(self._builder_with([(-500, -500)]), 200.0)
+        self.assertEqual(list(chunks), ["chunk_-3_-3"])
+
+    def test_빈_메쉬는_빈_결과(self):
+        self.assertEqual(split_chunks(MeshBuilder(), 200.0), {})
 
 if __name__ == "__main__":
     unittest.main()
