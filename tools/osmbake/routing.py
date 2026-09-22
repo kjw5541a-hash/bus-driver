@@ -96,7 +96,8 @@ def _nearest_on_path(path_xz: list[tuple[float, float]],
 
 def snap_stops(path_xz: list[tuple[float, float]], stop_nodes: list[dict],
                projector: Projector, *, max_dist_m: float = 30.0,
-               merge_within_m: float = 50.0) -> list[dict]:
+               merge_within_m: float = 50.0,
+               same_place_m: float = 20.0) -> list[dict]:
     """정류장 노드를 경로에 스냅한다. 순서는 경로 진행도가 정한다."""
     snapped = []
     for node in stop_nodes:
@@ -119,11 +120,15 @@ def snap_stops(path_xz: list[tuple[float, float]], stop_nodes: list[dict],
     cluster_end = 0.0  # 현재 클러스터에서 마지막으로 본 진행도
     for stop in snapped:
         previous = merged[-1] if merged else None
+        gap = stop["progress_m"] - cluster_end if previous is not None else 0.0
         # 빈 이름은 "같은 정류장"이 아니라 "이름을 모른다"는 뜻이라 합치지 않는다.
-        same_place = (previous is not None
-                      and stop["name"] != ""
-                      and previous["name"] == stop["name"]
-                      and stop["progress_m"] - cluster_end <= merge_within_m)
+        same_name = (stop["name"] != "" and previous is not None
+                     and previous["name"] == stop["name"]
+                     and gap <= merge_within_m)
+        # 이름이 달라도 이만큼 붙어 있으면 같은 자리다. 실데이터에는 승강장
+        # 번호나 출구 번호만 다른 정류장이 0.4 m 간격으로 들어 있어서,
+        # 이름만 보고 합치면 버스가 한 자리에서 두 번 선다.
+        same_place = previous is not None and (same_name or gap <= same_place_m)
         if same_place:
             # 버려지는 쪽도 기준점은 전진시킨다. 같은 이름이 셋 이상 이어질 때
             # 승자 진행도만 보면 체인이 끊겨 한 정류장이 둘로 쪼개진다.

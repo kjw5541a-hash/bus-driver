@@ -27,6 +27,9 @@ def corridor_bbox(path_latlon: list[tuple[float, float]],
 def near_path(elements: list[dict], path_xz: list[tuple[float, float]],
               projector: Projector, radius_m: float) -> list[dict]:
     """기하의 점 하나라도 경로에서 radius_m 안에 있으면 남긴다."""
+    # ponytail: 요소 정점 x 경로 구간 선형 스캔. seoul-100 실측 73.6초로
+    # 파이프라인 전체 75.1초의 98% 다. 빌드 타임 전용이고 노선당 한 번이라
+    # 둔다. 반경을 반복해 튜닝하게 되면 250 m 격자 색인으로 약 3초가 된다.
     kept = []
     for element in elements:
         geometry = element.get("geometry")

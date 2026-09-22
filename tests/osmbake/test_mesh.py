@@ -63,6 +63,26 @@ def facing_y(builder):
         yield v1[2] * v2[0] - v1[0] * v2[2]
 
 
+def normal_vs_winding(builder):
+    """삼각형마다 (저장된 법선 · 정점 순서가 내는 법선) 을 낸다.
+
+    facing_y 의 반대쪽 짝이다. facing_y 는 정점 순서만 보므로 저장 법선이
+    통째로 뒤집혀 있어도 통과한다 — 실제로 건물 벽이 그 상태로 새어 나갔다.
+    임포터가 앞면을 어느 쪽으로 정하든 한 파일 안에서 둘은 같은 쪽이어야
+    한다. 양수면 일치.
+    """
+    for i in range(0, len(builder.indices), 3):
+        a, b, c = (builder.indices[i + k] for k in range(3))
+        p1, p2, p3 = (builder.positions[idx] for idx in (a, b, c))
+        v1 = tuple(p2[k] - p1[k] for k in range(3))
+        v2 = tuple(p3[k] - p1[k] for k in range(3))
+        wind = (v1[1] * v2[2] - v1[2] * v2[1],
+                v1[2] * v2[0] - v1[0] * v2[2],
+                v1[0] * v2[1] - v1[1] * v2[0])
+        stored = builder.normals[a]
+        yield sum(wind[k] * stored[k] for k in range(3))
+
+
 class TestBuildRoads(unittest.TestCase):
     def setUp(self):
         self.projector = Projector(37.500, 127.000)
@@ -77,6 +97,12 @@ class TestBuildRoads(unittest.TestCase):
         builder = build_roads(
             [self._way([(37.500, 127.000), (37.500, 127.001)])], self.projector)
         self.assertEqual(builder.triangle_count(), 2)
+
+    def test_저장_법선이_정점_순서와_같은_쪽이다(self):
+        builder = build_roads([self._way([(37.500, 127.000), (37.500, 127.001),
+                                          (37.501, 127.0015)])], self.projector)
+        for index, dot in enumerate(normal_vs_winding(builder)):
+            self.assertGreater(dot, 0, f"도로 삼각형 {index} 의 저장 법선이 뒤집혀 있다")
 
     def test_꺾이는_점마다_패치를_덧댄다(self):
         # 구간 2개(사각형 2개 = 삼각형 4개) + 가운데 패치 1개(삼각형 2개)
@@ -258,6 +284,20 @@ class TestBuildBuildings(unittest.TestCase):
             for index, dot in enumerate(facings):
                 self.assertGreater(dot, 0,
                                    f"{name} 방향 벽 삼각형 {index} 가 안쪽을 향한다")
+
+    def test_저장_법선이_정점_순서와_같은_쪽이다(self):
+        """벽·지붕 전부. 벽만 반대라 건물이 안쪽에서 조명되고 있었다."""
+        square = [(37.5000, 127.0000), (37.5000, 127.0002),
+                  (37.5002, 127.0002), (37.5002, 127.0000)]
+        l_shape = [(37.5000, 127.0000), (37.5000, 127.0006),
+                   (37.50015, 127.0006), (37.50015, 127.0003),
+                   (37.5003, 127.0003), (37.5003, 127.0000)]
+        for name, coords in (("사각", square), ("사각뒤집음", list(reversed(square))),
+                             ("L자", l_shape), ("L자뒤집음", list(reversed(l_shape)))):
+            builder = build_buildings([self._building(coords)], self.projector)
+            for index, dot in enumerate(normal_vs_winding(builder)):
+                self.assertGreater(dot, 0,
+                                   f"{name} 삼각형 {index} 의 저장 법선이 뒤집혀 있다")
 
     def test_오목한_건물도_지붕이_온전하고_위를_향한다(self):
         """오목 footprint 를 build_buildings 끝까지 통과시킨다."""

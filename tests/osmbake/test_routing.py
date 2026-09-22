@@ -111,13 +111,23 @@ class TestSnapStops(unittest.TestCase):
         stops = snap_stops(self.path, nodes, self.projector)
         self.assertEqual(len(stops), 1)
 
-    def test_이름이_다르면_가까워도_합치지_않는다(self):
+    def test_이름이_달라도_같은_자리면_합친다(self):
+        # 실데이터의 "방화역3번출구"/"방화역2번출구" 처럼 승강장·출구 번호만
+        # 다른 정류장이 0.4 m 간격으로 들어 있다. 한 자리에서 두 번 서면 안 된다.
         nodes = [
             stop_node(1, 37.50010, 127.0005, "가"),
             stop_node(2, 37.49990, 127.0005, "나"),
         ]
         stops = snap_stops(self.path, nodes, self.projector)
-        self.assertEqual(len(stops), 2)
+        self.assertEqual(len(stops), 1)
+
+    def test_이름이_다르고_same_place_m_보다_멀면_합치지_않는다(self):
+        nodes = [
+            stop_node(1, 37.50005, 127.0000, "가"),
+            stop_node(2, 37.50005, 127.0005, "나"),   # 진행도 약 44m
+        ]
+        stops = snap_stops(self.path, nodes, self.projector)
+        self.assertEqual([s["name"] for s in stops], ["가", "나"])
 
     def test_이름_없는_정류장도_잡되_이름은_빈_문자열(self):
         node = {"type": "node", "id": 7, "lat": 37.50005, "lon": 127.0005,

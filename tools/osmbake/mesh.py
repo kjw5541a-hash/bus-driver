@@ -188,7 +188,10 @@ def build_buildings(ways: list[dict], projector: Projector) -> MeshBuilder:
             length = math.hypot(dx, dz)
             if length < 0.01:
                 continue
-            normal = (dz / length, 0.0, -dx / length)
+            # 정점 순서가 내는 법선과 같은 쪽이어야 한다. 반대로 주면 벽이
+            # 안쪽에서 조명돼 건물이 새까맣게 보인다(도로·지붕은 저장 법선과
+            # 정점 순서가 일치하는데 벽만 어긋나 있었다).
+            normal = (-dz / length, 0.0, dx / length)
             builder.add_polygon([(x1, 0.0, z1), (x2, 0.0, z2),
                                  (x2, height, z2), (x1, height, z1)], normal)
 

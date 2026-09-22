@@ -38,6 +38,12 @@ def fetch(query: str, cache_path: Path, *, opener=None,
             except Exception as error:  # 미러별 장애는 전부 다음 미러로 넘긴다
                 last_error = f"{url}: {error}"
                 continue
+            # Overpass 는 타임아웃해도 HTTP 200 에 부분 결과와 remark 를 담아
+            # 준다. 이걸 성공으로 보면 잘린 응답이 캐시에 박히고, 캐시는
+            # 커밋 대상이라 이후 모든 실행이 영구히 구멍 난 맵을 굽는다.
+            if "remark" in payload:
+                last_error = f"{url}: {payload['remark']}"
+                continue
             cache_path.parent.mkdir(parents=True, exist_ok=True)
             cache_path.write_text(json.dumps(payload, ensure_ascii=False),
                                   encoding="utf-8")

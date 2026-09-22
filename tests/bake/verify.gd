@@ -7,7 +7,7 @@ extends Node3D
 # 검증 항목:
 #   1. route JSON 과 .glb 가 읽히고 충돌 메쉬가 만들어진다
 #   2. 경로 폴리라인 위 2 m 간격 표본 아래에 도로가 있다(지면 연속성)
-#   3. 정류장에 이름이 있고 진행도 순서가 단조 증가한다
+#   3. 정류장에 이름이 있고, 진행도가 단조 증가하며, 서로 너무 붙어 있지 않다
 #   4. 실제 물리 버스가 추락 없이 경로를 따라 DRIVE_MIN_M 이상 달린다
 #
 # 4번은 완주를 요구하지 않는다. 실제 노선에는 12 t 버스가 한 번에 못 도는
@@ -20,6 +20,7 @@ const ARRIVE_RADIUS := 25.0     # 웨이포인트 도달 판정
 const STUCK_LIMIT := 3.0        # 초. 이보다 오래 멈춰 있으면 주행을 끝낸다
 const GROUND_COVERAGE_MIN := 0.98
 const STOP_NAME_COVERAGE_MIN := 0.95
+const STOP_GAP_MIN := 15.0      # m. 이보다 붙어 있으면 같은 자리에 중복 스냅된 것
 const SAMPLE_STEP := 2.0        # m. 지면 연속성 표본 간격
 const DRIVE_MIN_M := 100.0      # m. 이만큼은 실제로 굴러가야 한다
 # 조향 목표점을 실제 경로점(최대 86m 앞)에 바로 맞추면 급커브에서 코너를
@@ -155,13 +156,25 @@ func _check_stop_names() -> void:
 		failures.append("정류장 이름 커버리지 %.3f < %.2f" % [ratio, STOP_NAME_COVERAGE_MIN])
 
 func _check_stop_order() -> void:
-	var previous := -1.0
-	for stop in meta["stops"]:
-		var progress := float(stop["progress_m"])
-		if progress < previous:
-			failures.append("정류장 진행도가 거꾸로다: %s" % stop["name"])
+	var stops: Array = meta["stops"]
+	for i in range(1, stops.size()):
+		if float(stops[i]["progress_m"]) < float(stops[i - 1]["progress_m"]):
+			failures.append("정류장 진행도가 거꾸로다: %s" % stops[i]["name"])
 			return
-		previous = progress
+	# 같은 자리에 승강장·출구 번호만 다른 정류장이 여럿 스냅되면 버스가 한
+	# 자리에서 두 번 선다. 중복 스냅은 간격으로 드러난다.
+	var closest := INF
+	var closest_pair := ""
+	for i in range(1, stops.size()):
+		var gap := float(stops[i]["progress_m"]) - float(stops[i - 1]["progress_m"])
+		if gap < closest:
+			closest = gap
+			closest_pair = "%s/%s" % [stops[i - 1]["name"], stops[i]["name"]]
+	if stops.size() < 2:
+		return
+	print("정류장 최소 간격 %.1fm (%s)" % [closest, closest_pair])
+	if closest < STOP_GAP_MIN:
+		failures.append("정류장 간격 %.1fm < %.0fm: %s" % [closest, STOP_GAP_MIN, closest_pair])
 
 func _advance_guide() -> void:
 	# guide_idx 를 버스의 실제 위치를 따라 앞으로만 전진시킨다(뒤로 가지 않음).
