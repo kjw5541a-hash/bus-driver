@@ -2,7 +2,8 @@
 import unittest
 
 from tools.osmbake.geo import Projector
-from tools.osmbake.mesh import MeshBuilder, build_roads, road_width
+from tools.osmbake.mesh import (MeshBuilder, build_buildings, build_roads,
+                                 building_height, road_width, triangulate)
 
 
 class TestRoadWidth(unittest.TestCase):
@@ -126,6 +127,102 @@ class TestBuildRoads(unittest.TestCase):
         road_wid = road_width(way["tags"])
 
         self.assertAlmostEqual(z_width, road_wid, places=5)
+
+
+class TestBuildingHeight(unittest.TestCase):
+    def test_height_태그_우선(self):
+        self.assertEqual(building_height({"height": "20"}), 20.0)
+
+    def test_height_에_단위가_붙어도_읽는다(self):
+        self.assertEqual(building_height({"height": "20 m"}), 20.0)
+
+    def test_levels_는_층당_3_2m(self):
+        self.assertAlmostEqual(building_height({"building:levels": "5"}), 16.0)
+
+    def test_아무것도_없으면_9m(self):
+        self.assertEqual(building_height({}), 9.0)
+
+    def test_이상한_값이면_9m(self):
+        self.assertEqual(building_height({"height": "높음"}), 9.0)
+
+    def test_너무_낮으면_2_5m_로_올린다(self):
+        self.assertEqual(building_height({"height": "0.5"}), 2.5)
+
+
+class TestTriangulate(unittest.TestCase):
+    def test_삼각형은_그대로(self):
+        self.assertEqual(len(triangulate([(0, 0), (1, 0), (0, 1)])), 1)
+
+    def test_사각형은_삼각형_둘(self):
+        self.assertEqual(len(triangulate([(0, 0), (2, 0), (2, 2), (0, 2)])), 2)
+
+    def test_오목한_L자는_삼각형_넷(self):
+        l_shape = [(0, 0), (3, 0), (3, 1), (1, 1), (1, 3), (0, 3)]
+        self.assertEqual(len(triangulate(l_shape)), 4)
+
+    def test_시계방향_입력도_처리한다(self):
+        clockwise = [(0, 0), (0, 2), (2, 2), (2, 0)]
+        self.assertEqual(len(triangulate(clockwise)), 2)
+
+    def test_모든_인덱스가_범위_안(self):
+        l_shape = [(0, 0), (3, 0), (3, 1), (1, 1), (1, 3), (0, 3)]
+        for triangle in triangulate(l_shape):
+            for index in triangle:
+                self.assertIn(index, range(len(l_shape)))
+
+    def test_점이_셋_미만이면_빈_결과(self):
+        self.assertEqual(triangulate([(0, 0), (1, 1)]), [])
+
+
+class TestBuildBuildings(unittest.TestCase):
+    def setUp(self):
+        self.projector = Projector(37.500, 127.000)
+
+    def _building(self, coords, **tags):
+        tags.setdefault("building", "yes")
+        ring = coords + [coords[0]]
+        return {"type": "way", "id": 1, "nodes": list(range(len(ring))),
+                "geometry": [{"lat": lat, "lon": lon} for lat, lon in ring],
+                "tags": tags}
+
+    def test_사각_건물은_벽_넷과_지붕(self):
+        # 벽 4개(삼각형 8개) + 지붕(삼각형 2개)
+        builder = build_buildings([self._building([
+            (37.5000, 127.0000), (37.5000, 127.0002),
+            (37.5002, 127.0002), (37.5002, 127.0000)])], self.projector)
+        self.assertEqual(builder.triangle_count(), 10)
+
+    def test_지붕_높이가_건물_높이와_같다(self):
+        builder = build_buildings([self._building(
+            [(37.5000, 127.0000), (37.5000, 127.0002),
+             (37.5002, 127.0002), (37.5002, 127.0000)],
+            height="15")], self.projector)
+        self.assertAlmostEqual(max(y for _x, y, _z in builder.positions), 15.0)
+
+    def test_바닥은_y_0(self):
+        builder = build_buildings([self._building([
+            (37.5000, 127.0000), (37.5000, 127.0002),
+            (37.5002, 127.0002), (37.5002, 127.0000)])], self.projector)
+        self.assertAlmostEqual(min(y for _x, y, _z in builder.positions), 0.0)
+
+    def test_점이_너무_적은_건물은_건너뛴다(self):
+        degenerate = {"type": "way", "id": 2, "nodes": [1, 2],
+                      "geometry": [{"lat": 37.5, "lon": 127.0},
+                                   {"lat": 37.5, "lon": 127.0001}],
+                      "tags": {"building": "yes"}}
+        builder = build_buildings([degenerate], self.projector)
+        self.assertEqual(builder.triangle_count(), 0)
+
+    def test_지붕_삼각형이_위를_향한다(self):
+        """ear-clipping 지붕도 도로 리본과 같은 규칙으로 위를 향해야 한다."""
+        builder = build_buildings([self._building([
+            (37.5000, 127.0000), (37.5000, 127.0002),
+            (37.5002, 127.0002), (37.5002, 127.0000)])], self.projector)
+        # 마지막 2개 삼각형(지붕)만 확인 - 벽 4개(8삼각형) 다음에 온다
+        roof_ys = list(facing_y(builder))[8:]
+        self.assertEqual(len(roof_ys), 2)
+        for index, y in enumerate(roof_ys):
+            self.assertGreater(y, 0, f"지붕 삼각형 {index} 가 아래를 향한다 (y={y})")
 
 
 if __name__ == "__main__":

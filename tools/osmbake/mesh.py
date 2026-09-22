@@ -80,6 +80,116 @@ class MeshBuilder:
         return len(self.indices) // 3
 
 
+DEFAULT_BUILDING_HEIGHT = 9.0
+METERS_PER_LEVEL = 3.2
+MIN_BUILDING_HEIGHT = 2.5
+
+
+def building_height(tags: dict) -> float:
+    for key, factor in (("height", 1.0), ("building:levels", METERS_PER_LEVEL)):
+        raw = tags.get(key)
+        if not raw:
+            continue
+        try:
+            value = float(str(raw).split()[0].replace("m", "").strip())
+        except (ValueError, IndexError):
+            continue
+        return max(value * factor, MIN_BUILDING_HEIGHT)
+    return DEFAULT_BUILDING_HEIGHT
+
+
+def _signed_area(polygon) -> float:
+    total = 0.0
+    for (x1, z1), (x2, z2) in zip(polygon, polygon[1:] + polygon[:1]):
+        total += x1 * z2 - x2 * z1
+    return total / 2.0
+
+
+def _is_convex(a, b, c) -> bool:
+    return ((b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0])) > 0
+
+
+def _point_in_triangle(p, a, b, c) -> bool:
+    d1 = (p[0] - b[0]) * (a[1] - b[1]) - (a[0] - b[0]) * (p[1] - b[1])
+    d2 = (p[0] - c[0]) * (b[1] - c[1]) - (b[0] - c[0]) * (p[1] - c[1])
+    d3 = (p[0] - a[0]) * (c[1] - a[1]) - (c[0] - a[0]) * (p[1] - a[1])
+    has_negative = (d1 < 0) or (d2 < 0) or (d3 < 0)
+    has_positive = (d1 > 0) or (d2 > 0) or (d3 > 0)
+    return not (has_negative and has_positive)
+
+
+def triangulate(polygon: list[tuple[float, float]]) -> list[tuple[int, int, int]]:
+    """Ear clipping 삼각분할. 원래 폴리곤 인덱스로 된 삼각형 목록을 낸다.
+
+    스파이크에서 쓴 팬 삼각분할은 오목한 건물 footprint 에서 눈에 띄게 깨졌다.
+    """
+    if len(polygon) < 3:
+        return []
+    indices = list(range(len(polygon)))
+    if _signed_area(polygon) < 0:
+        indices.reverse()
+
+    triangles: list[tuple[int, int, int]] = []
+    guard = 0
+    while len(indices) > 3 and guard < len(polygon) * len(polygon):
+        guard += 1
+        for position in range(len(indices)):
+            i_prev = indices[position - 1]
+            i_curr = indices[position]
+            i_next = indices[(position + 1) % len(indices)]
+            a, b, c = polygon[i_prev], polygon[i_curr], polygon[i_next]
+            if not _is_convex(a, b, c):
+                continue
+            others = [polygon[i] for i in indices
+                      if i not in (i_prev, i_curr, i_next)]
+            if any(_point_in_triangle(p, a, b, c) for p in others):
+                continue
+            triangles.append((i_prev, i_curr, i_next))
+            indices.pop(position)
+            break
+        else:
+            break  # 귀를 못 찾으면(자기교차 등) 남은 것은 버린다
+    if len(indices) == 3:
+        triangles.append(tuple(indices))
+    # ear clipping 은 내부적으로 표준 반시계(CCW) 폴리곤을 가정해야 귀를 올바르게
+    # 찾는다. 하지만 이 게임의 지붕(위를 향하는 수평면) 앞면 규칙은 반대다:
+    # cross(v2-v1, v3-v1).y > 0 이 되려면 (x, z) 평면에서는 시계 방향이어야
+    # 한다(build_roads 의 리본과 동일한 규칙, tests/osmbake/test_mesh.py 의
+    # facing_y 참고). 그래서 반환 직전에 각 삼각형의 둘째·셋째 인덱스를 바꿔
+    # 감는 방향을 뒤집는다.
+    return [(a, c, b) for a, b, c in triangles]
+
+
+def build_buildings(ways: list[dict], projector: Projector) -> MeshBuilder:
+    """건물 footprint 를 높이만큼 밀어올린 벽 + ear clipping 지붕."""
+    builder = MeshBuilder()
+    for w in ways:
+        tags = w.get("tags", {})
+        if "building" not in tags or "geometry" not in w:
+            continue
+        ring = [projector.to_xz(g["lat"], g["lon"]) for g in w["geometry"]]
+        if len(ring) >= 2 and ring[0] == ring[-1]:
+            ring = ring[:-1]
+        if len(ring) < 3:
+            continue
+
+        height = building_height(tags)
+        for (x1, z1), (x2, z2) in zip(ring, ring[1:] + ring[:1]):
+            dx, dz = x2 - x1, z2 - z1
+            length = math.hypot(dx, dz)
+            if length < 0.01:
+                continue
+            normal = (dz / length, 0.0, -dx / length)
+            builder.add_polygon([(x1, 0.0, z1), (x2, 0.0, z2),
+                                 (x2, height, z2), (x1, height, z1)], normal)
+
+        roof_triangles = triangulate(ring)
+        if roof_triangles:
+            builder.add_triangles([(x, height, z) for x, z in ring],
+                                  roof_triangles, UP)
+    return builder
+
+
 def build_roads(ways: list[dict], projector: Projector) -> MeshBuilder:
     """도로 중심선을 폭만큼 넓힌 리본 + 꺾이는 지점 패치."""
     builder = MeshBuilder()
