@@ -125,6 +125,42 @@ class TestSnapStops(unittest.TestCase):
         stops = snap_stops(self.path, [node], self.projector)
         self.assertEqual(stops[0]["name"], "")
 
+    def test_빈_이름_정류장둘은_합치지_않는다(self):
+        # 빈 이름은 "같은 정류장"이 아니라 "이름을 모른다"는 뜻
+        nodes = [
+            {"type": "node", "id": 1, "lat": 37.50005, "lon": 127.0005,
+             "tags": {"highway": "bus_stop"}},
+            {"type": "node", "id": 2, "lat": 37.50010, "lon": 127.0010,
+             "tags": {"highway": "bus_stop"}},
+        ]
+        stops = snap_stops(self.path, nodes, self.projector)
+        self.assertEqual(len(stops), 2)
+        self.assertEqual(stops[0]["osm_node"], 1)
+        self.assertEqual(stops[1]["osm_node"], 2)
+
+    def test_같은_이름_셋이상_연달아_있으면_하나로_합친다(self):
+        # 진행도 0/35/70, 경로까지 거리는 가까움/멂/가까움.
+        # 중간 항목이 버려져도 기준점을 전진시켜야 체인이 끊기지 않는다.
+        nodes = [
+            stop_node(1, 37.50005, 127.0000, "반복 정류장"),  # 진행도 0m, 거리 5.6m
+            stop_node(2, 37.50022, 127.0004, "반복 정류장"),  # 진행도 35m, 거리 24m
+            stop_node(3, 37.50005, 127.0008, "반복 정류장"),  # 진행도 70m, 거리 5.6m
+        ]
+        stops = snap_stops(self.path, nodes, self.projector)
+        self.assertEqual(len(stops), 1)
+        # 가장 가까운 첫 항목이 승자로 남는다
+        self.assertEqual(stops[0]["osm_node"], 1)
+
+    def test_같은_이름_둘이_merge_within_m보다_멀면_합치지_않는다(self):
+        # 노선을 두 번 지나는 정류장 — 같은 이름이지만 진행도가 50m 이상 멀면 별개
+        nodes = [
+            stop_node(1, 37.50005, 127.0000, "반복 정류장"),
+            stop_node(2, 37.50005, 127.0020, "반복 정류장"),  # 진행도 > 50m
+        ]
+        stops = snap_stops(self.path, nodes, self.projector)
+        self.assertEqual(len(stops), 2)
+        self.assertEqual([s["name"] for s in stops], ["반복 정류장", "반복 정류장"])
+
 
 if __name__ == "__main__":
     unittest.main()

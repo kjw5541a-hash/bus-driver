@@ -116,17 +116,23 @@ def snap_stops(path_xz: list[tuple[float, float]], stop_nodes: list[dict],
     snapped.sort(key=lambda s: s["progress_m"])
 
     merged: list[dict] = []
+    cluster_end = 0.0  # 현재 클러스터에서 마지막으로 본 진행도
     for stop in snapped:
         previous = merged[-1] if merged else None
+        # 빈 이름은 "같은 정류장"이 아니라 "이름을 모른다"는 뜻이라 합치지 않는다.
         same_place = (previous is not None
+                      and stop["name"] != ""
                       and previous["name"] == stop["name"]
-                      and stop["progress_m"] - previous["progress_m"] <= merge_within_m)
+                      and stop["progress_m"] - cluster_end <= merge_within_m)
         if same_place:
-            # 경로에 더 가까운 쪽을 남긴다
+            # 버려지는 쪽도 기준점은 전진시킨다. 같은 이름이 셋 이상 이어질 때
+            # 승자 진행도만 보면 체인이 끊겨 한 정류장이 둘로 쪼개진다.
+            cluster_end = stop["progress_m"]
             if stop["_distance"] < previous["_distance"]:
                 merged[-1] = stop
             continue
         merged.append(stop)
+        cluster_end = stop["progress_m"]
 
     for stop in merged:
         del stop["_distance"]
