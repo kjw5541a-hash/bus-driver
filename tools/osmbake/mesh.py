@@ -9,9 +9,12 @@ import math
 
 from .geo import Projector
 
+# 서울 기준 차도폭 추정. primary 는 왕복 6차선(20 m), secondary 는 왕복
+# 4~5차선(15 m) 이 흔하다. 처음엔 16/12 였는데 실제보다 좁아 버스가 도로를
+# 꽉 채웠다.
 ROAD_WIDTHS = {
     "motorway": 20.0, "trunk": 20.0,
-    "primary": 16.0, "secondary": 12.0, "tertiary": 10.0,
+    "primary": 20.0, "secondary": 15.0, "tertiary": 10.0,
     "unclassified": 7.0, "residential": 7.0, "busway": 7.0,
     "living_street": 6.0, "service": 4.5,
 }

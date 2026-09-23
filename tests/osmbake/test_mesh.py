@@ -13,10 +13,10 @@ class TestRoadWidth(unittest.TestCase):
         self.assertAlmostEqual(road_width({"highway": "primary", "lanes": "4"}), 12.8)
 
     def test_lanes_가_이상하면_등급으로_떨어진다(self):
-        self.assertEqual(road_width({"highway": "primary", "lanes": "네개"}), 16.0)
+        self.assertEqual(road_width({"highway": "primary", "lanes": "네개"}), 20.0)
 
     def test_등급별_기본값(self):
-        self.assertEqual(road_width({"highway": "secondary"}), 12.0)
+        self.assertEqual(road_width({"highway": "secondary"}), 15.0)
         self.assertEqual(road_width({"highway": "busway"}), 7.0)
         self.assertEqual(road_width({"highway": "service"}), 4.5)
 
@@ -30,8 +30,8 @@ class TestRoadWidth(unittest.TestCase):
         self.assertGreaterEqual(road_width({"highway": "service", "lanes": "1"}), 4.0)
 
     def test_lanes_0과_음수는_등급_기본값으로_떨어진다(self):
-        self.assertEqual(road_width({"highway": "primary", "lanes": "0"}), 16.0)
-        self.assertEqual(road_width({"highway": "primary", "lanes": "-1"}), 16.0)
+        self.assertEqual(road_width({"highway": "primary", "lanes": "0"}), 20.0)
+        self.assertEqual(road_width({"highway": "primary", "lanes": "-1"}), 20.0)
 
 
 class TestMeshBuilder(unittest.TestCase):
