@@ -2,7 +2,10 @@ extends Node3D
 class_name City
 # 구운 .glb 를 올리고 충돌면을 만든다. 청크 노드 목록을 쥔 유일한 곳이라,
 # 거리 컬링이 필요해지면 들어갈 자리도 여기다.
-
+#
+# 아직 필요 없다. seoul-100(삼각형 133k, 청크 643개)을 M4 Pro 에서 재니
+# 평균 119.7 fps / 최저 119.0 으로 vsync 상한에 붙었다. 기준은 평균 60 /
+# 최저 55 다. Godot 이 MeshInstance3D 단위로 절두체 컬링을 공짜로 해준다.
 var chunk_nodes: Array[Node3D] = []
 
 func load_city(route_id: String) -> bool:
