@@ -226,6 +226,32 @@ class TestSignalCandidates(unittest.TestCase):
         self.assertEqual(len(signals[0]["axis_deg"]), 2)
         self.assertGreater(signals[0]["half_width"], 0.0)
 
+    def test_한_교차로의_osm_노드_여럿은_하나로_합쳐진다(self):
+        # OSM 은 진입 방향마다 traffic_signals 노드를 따로 찍는다. seoul-100
+        # 에서 큰 교차로 하나가 노드 12개로 나와 신호 간격이 161 m 가 됐다.
+        nodes = [
+            {"type": "node", "id": 9, "lat": 37.50000, "lon": 127.00100,
+             "tags": {"highway": "traffic_signals"}},
+            {"type": "node", "id": 10, "lat": 37.50010, "lon": 127.00100,
+             "tags": {"highway": "traffic_signals"}},
+            {"type": "node", "id": 11, "lat": 37.50000, "lon": 127.00113,
+             "tags": {"highway": "traffic_signals"}},
+        ]
+        signals = signal_candidates(build_graph([]), nodes, self.projector,
+                                    self.path, 250.0)
+        self.assertEqual(len(signals), 1)
+
+    def test_멀리_떨어진_신호는_합쳐지지_않는다(self):
+        nodes = [
+            {"type": "node", "id": 9, "lat": 37.50000, "lon": 127.00000,
+             "tags": {"highway": "traffic_signals"}},
+            {"type": "node", "id": 10, "lat": 37.50000, "lon": 127.00200,
+             "tags": {"highway": "traffic_signals"}},
+        ]
+        signals = signal_candidates(build_graph([]), nodes, self.projector,
+                                    self.path, 250.0)
+        self.assertEqual(len(signals), 2)
+
     def test_osm_신호등이_차지한_교차점은_중복_합성되지_않는다(self):
         elements = [
             way(1, [10, 50], [(37.500, 127.0000), (37.500, 127.0010)]),

@@ -30,6 +30,11 @@ DEFAULT_HALF_WIDTH = 7.5
 # OSM 신호등 노드를 그래프 노드에 붙이는 한계 거리.
 SNAP_LIMIT_M = 30.0
 
+# 한 교차로로 묶는 거리. OSM 은 진입 방향마다 traffic_signals 노드를 따로
+# 찍어서 큰 교차로 하나가 노드 12개로 나온다. 합치지 않으면 seoul-100 이
+# 150개(161 m 간격)가 되어 버스가 계속 선다. 합치면 75개(322 m)다.
+MERGE_RADIUS_M = 40.0
+
 # 두 방위각을 같은 축으로 볼지 가르는 각거리.
 AXIS_TOLERANCE_DEG = 20.0
 
@@ -163,14 +168,11 @@ def signal_candidates(graph: RoadGraph, osm_signal_nodes: list[dict],
         return best
 
     signals = []
-    claimed: set[int] = set()
     for node in osm_signal_nodes:
         xz = projector.to_xz(node["lat"], node["lon"])
         if _nearest_on_path(path_xz, xz)[0] > radius_m:
             continue
         snapped = nearest_graph_node(xz)
-        if snapped is not None:
-            claimed.add(snapped)
         entry = {"x": round(xz[0], 2), "z": round(xz[1], 2),
                  "source": "osm", "roads": 0}
         entry.update(describe(snapped))
@@ -179,10 +181,6 @@ def signal_candidates(graph: RoadGraph, osm_signal_nodes: list[dict],
 
     taken = {(s["x"], s["z"]) for s in signals}
     for node_id, edges in incident.items():
-        # OSM 태그가 이미 이 교차점을 집었으면 합성하지 않는다. 안 그러면 몇 m
-        # 어긋난 신호 두 개가 같은 교차로에 선다.
-        if node_id in claimed:
-            continue
         # "주요도로 3갈래 이상"은 서로 다른 way_id 가 아니라 갈래 수로 센다.
         # 간선 둘이 십자로 만나는 전형적 신호 교차로는 way_id 가 2개뿐이다.
         major_branches = {edge.end if edge.start == node_id else edge.start
@@ -205,4 +203,22 @@ def signal_candidates(graph: RoadGraph, osm_signal_nodes: list[dict],
         entry.update(describe(node_id))
         entry["camera"] = _has_camera(key[0], key[1])
         signals.append(entry)
-    return signals
+    return _merge_nearby(signals)
+
+
+def _merge_nearby(signals: list[dict]) -> list[dict]:
+    """MERGE_RADIUS_M 안의 후보를 하나로 합친다.
+
+    큰 교차로 하나가 OSM 노드 여럿 + 합성 교차점 여럿으로 나오는 것을 막는다.
+    대표는 갈래 수가 가장 많은 항목 — 합성 항목만 축 방위각과 반폭을 도로
+    기하에서 제대로 얻기 때문이다. 동점이면 좌표 순으로 고정한다.
+    """
+    # ponytail: 대표 후보 x 남은 후보 선형 스캔. 노선당 150개 안쪽이라 싸다.
+    order = sorted(signals, key=lambda e: (-e["roads"], e["x"], e["z"]))
+    kept: list[dict] = []
+    for entry in order:
+        if any(math.hypot(entry["x"] - k["x"], entry["z"] - k["z"])
+               <= MERGE_RADIUS_M for k in kept):
+            continue
+        kept.append(entry)
+    return kept
