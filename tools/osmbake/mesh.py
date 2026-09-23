@@ -337,6 +337,209 @@ def build_markings(ways: list[dict],
     return {"marking_center": center, "marking_lane": lane}
 
 
+SIDEWALK_MIN_ROAD_WIDTH = 6.0   # service(4.5 m) 같은 골목에는 인도가 없다
+SIDEWALK_WIDTH = 2.0
+CURB_HEIGHT = 0.15
+CURB_SLOPE_M = 0.25   # 연석 경사면의 수평 폭
+INTERSECTION_CLEAR_M = 3.0      # 교차점에서 이만큼 더 비운다
+MIN_SIDEWALK_SPAN = 0.5
+
+
+def _allowed_spans(start: float, length: float, cuts: list[float],
+                   clear: float) -> list[tuple[float, float]]:
+    """구간 [0, length] 에서 교차점 반경을 뺀 구간들. start 는 way 누적 거리."""
+    spans = [(0.0, length)]
+    for cut in cuts:
+        low, high = cut - clear - start, cut + clear - start
+        remaining: list[tuple[float, float]] = []
+        for a, b in spans:
+            if high <= a or low >= b:
+                remaining.append((a, b))
+                continue
+            if low > a:
+                remaining.append((a, min(low, b)))
+            if high < b:
+                remaining.append((max(high, a), b))
+        spans = remaining
+    return [(a, b) for a, b in spans if b - a > MIN_SIDEWALK_SPAN]
+
+
+def _sidewalk_side(builder: MeshBuilder, ax, az, bx, bz, nx, nz,
+                   half: float, side: int) -> None:
+    """한쪽 인도. side 는 +1(법선 쪽) 또는 -1.
+
+    연석은 수직면이 아니라 폭 0.25 m 경사면이다. 수직으로 세웠더니 실측
+    0.15 m 턱이 VehicleBody3D 의 레이캐스트 바퀴에 그냥 벽이 됐다 —
+    자율주행 검증이 153 m 에서 67 m 로 떨어졌다. 경사면은 올라탈 수는 있고
+    대신 덜컹인다.
+
+    윗면·경사면 모두 감는 방향이 저장 법선과 맞아야 한다. 틀리면 면이
+    뒤에서 조명돼 새까맣게 나온다.
+    """
+    edge = half * side                                   # 차도 끝, y=0
+    lip = (half + CURB_SLOPE_M) * side                   # 연석 위, y=CURB_HEIGHT
+    outer = (half + CURB_SLOPE_M + SIDEWALK_WIDTH) * side
+
+    if side > 0:
+        top_first, top_second = outer, lip
+        slope_points_forward = False
+    else:
+        top_first, top_second = lip, outer
+        slope_points_forward = True
+    builder.add_polygon([
+        (ax + nx * top_first, CURB_HEIGHT, az + nz * top_first),
+        (bx + nx * top_first, CURB_HEIGHT, bz + nz * top_first),
+        (bx + nx * top_second, CURB_HEIGHT, bz + nz * top_second),
+        (ax + nx * top_second, CURB_HEIGHT, az + nz * top_second),
+    ], UP)
+
+    # 경사면 법선은 위와 도로 쪽을 함께 본다.
+    run = math.hypot(CURB_SLOPE_M, CURB_HEIGHT)
+    normal = (-nx * side * CURB_HEIGHT / run, CURB_SLOPE_M / run,
+              -nz * side * CURB_HEIGHT / run)
+    low_a = (ax + nx * edge, 0.0, az + nz * edge)
+    low_b = (bx + nx * edge, 0.0, bz + nz * edge)
+    high_a = (ax + nx * lip, CURB_HEIGHT, az + nz * lip)
+    high_b = (bx + nx * lip, CURB_HEIGHT, bz + nz * lip)
+    if slope_points_forward:
+        builder.add_polygon([low_a, low_b, high_b, high_a], normal)
+    else:
+        builder.add_polygon([low_b, low_a, high_a, high_b], normal)
+
+
+SIDEWALK_SAMPLE_M = 2.0
+_ROAD_CELL_M = 32.0
+
+
+def _road_index(ways: list[dict], projector: Projector) -> dict:
+    """도로 구간을 격자에 담는다. 키는 셀 좌표, 값은 (x1, z1, x2, z2, half)."""
+    index: dict[tuple[int, int], list] = {}
+    for w in ways:
+        tags = w.get("tags", {})
+        if "highway" not in tags or "geometry" not in w:
+            continue
+        half = road_width(tags) / 2.0
+        points = [projector.to_xz(g["lat"], g["lon"]) for g in w["geometry"]]
+        for (x1, z1), (x2, z2) in zip(points, points[1:]):
+            if math.hypot(x2 - x1, z2 - z1) < 0.01:
+                continue
+            segment = (x1, z1, x2, z2, half)
+            cx1, cx2 = sorted((x1, x2))
+            cz1, cz2 = sorted((z1, z2))
+            for cx in range(math.floor(cx1 / _ROAD_CELL_M),
+                            math.floor(cx2 / _ROAD_CELL_M) + 1):
+                for cz in range(math.floor(cz1 / _ROAD_CELL_M),
+                                math.floor(cz2 / _ROAD_CELL_M) + 1):
+                    index.setdefault((cx, cz), []).append(segment)
+    return index
+
+
+def _on_roadway(index: dict, x: float, z: float) -> bool:
+    """이 점이 어떤 도로 리본 안에 있나.
+
+    인도 중심선은 자기 도로 반폭보다 바깥이라 자기 자신에는 안 걸린다.
+    """
+    cx, cz = math.floor(x / _ROAD_CELL_M), math.floor(z / _ROAD_CELL_M)
+    for dx in (-1, 0, 1):
+        for dz in (-1, 0, 1):
+            for x1, z1, x2, z2, half in index.get((cx + dx, cz + dz), ()):
+                sx, sz = x2 - x1, z2 - z1
+                length_squared = sx * sx + sz * sz
+                t = ((x - x1) * sx + (z - z1) * sz) / length_squared
+                t = min(1.0, max(0.0, t))
+                if math.hypot(x - (x1 + sx * t), z - (z1 + sz * t)) < half:
+                    return True
+    return False
+
+
+def _clear_runs(index: dict, x1, z1, ux, uz, nx, nz, offset: float,
+                span_start: float, span_end: float) -> list[tuple[float, float]]:
+    """구간을 훑어 다른 도로 위가 아닌 토막들만 낸다.
+
+    평행한 이면도로나 측도 옆에서는 인도가 이웃 차도를 덮는다. 덮으면 거기에
+    연석 턱이 생겨 멀쩡한 도로가 막힌다 — seoul-seodaemun03 의 자율주행이
+    평행한 secondary 네 개가 몰린 지점에서 실제로 걸렸다.
+    """
+    runs: list[tuple[float, float]] = []
+    open_at: float | None = None
+    distance = span_start
+    while True:
+        distance = min(distance, span_end)
+        px = x1 + ux * distance + nx * offset
+        pz = z1 + uz * distance + nz * offset
+        if _on_roadway(index, px, pz):
+            if open_at is not None and distance - open_at > MIN_SIDEWALK_SPAN:
+                runs.append((open_at, distance))
+            open_at = None
+        elif open_at is None:
+            open_at = distance
+        if distance >= span_end:
+            break
+        distance += SIDEWALK_SAMPLE_M
+    if open_at is not None and span_end - open_at > MIN_SIDEWALK_SPAN:
+        runs.append((open_at, span_end))
+    return runs
+
+
+def build_sidewalks(ways: list[dict], projector: Projector) -> MeshBuilder:
+    """도로 양옆 인도와 연석.
+
+    교차점 둘레는 비운다. 안 비우면 직교하는 도로를 인도가 가로질러 교차로마다
+    0.15 m 턱이 생기고 버스가 덜컹인다. 교차점은 둘 이상의 way 가 공유하는
+    노드다 — graph.py 와 같은 판정이다. 공유 노드가 없는 교차(고가·지하차도)는
+    실제로도 안 만나므로 자르지 않는 것이 맞다.
+    """
+    usage: dict[int, int] = {}
+    for w in ways:
+        for node_id in set(w.get("nodes", [])):
+            usage[node_id] = usage.get(node_id, 0) + 1
+
+    roadway = _road_index(ways, projector)
+    builder = MeshBuilder()
+    for w in ways:
+        tags = w.get("tags", {})
+        if "highway" not in tags or "geometry" not in w:
+            continue
+        width = road_width(tags)
+        if width < SIDEWALK_MIN_ROAD_WIDTH:
+            continue
+        points = [projector.to_xz(g["lat"], g["lon"]) for g in w["geometry"]]
+        node_ids = w.get("nodes", [])
+        half = width / 2.0
+        clear = half + INTERSECTION_CLEAR_M
+
+        # 교차점을 way 시작점부터의 누적 거리로 옮긴다
+        cuts: list[float] = []
+        traveled = 0.0
+        for index, (x, z) in enumerate(points):
+            if index > 0:
+                traveled += math.hypot(x - points[index - 1][0],
+                                       z - points[index - 1][1])
+            if index < len(node_ids) and usage.get(node_ids[index], 0) > 1:
+                cuts.append(traveled)
+
+        start = 0.0
+        for (x1, z1), (x2, z2) in zip(points, points[1:]):
+            dx, dz = x2 - x1, z2 - z1
+            length = math.hypot(dx, dz)
+            if length < 0.01:
+                continue
+            ux, uz = dx / length, dz / length
+            nx, nz = -uz, ux
+            for span_start, span_end in _allowed_spans(start, length, cuts, clear):
+                for side in (1, -1):
+                    middle = (half + CURB_SLOPE_M + SIDEWALK_WIDTH / 2.0) * side
+                    for run_a, run_b in _clear_runs(roadway, x1, z1, ux, uz,
+                                                    nx, nz, middle,
+                                                    span_start, span_end):
+                        _sidewalk_side(builder,
+                                       x1 + ux * run_a, z1 + uz * run_a,
+                                       x1 + ux * run_b, z1 + uz * run_b,
+                                       nx, nz, half, side)
+            start += length
+    return builder
+
+
 CHUNK_SIZE_M = 200.0
 
 

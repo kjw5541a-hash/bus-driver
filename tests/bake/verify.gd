@@ -282,8 +282,9 @@ func _physics_process(delta: float) -> void:
 
 func _finish(reason: String) -> void:
 	finished = true
-	print("주행 %s: %.0fm 전진, 경로점 %d/%d, 시간 %.1f초, 최저 y %.2f"
-		% [reason, driven, waypoint, route.size() - 1, elapsed, min_y])
+	print("주행 %s: %.0fm 전진, 경로점 %d/%d, 시간 %.1f초, 최저 y %.2f, 위치 (%.1f, %.1f, %.1f)"
+		% [reason, driven, waypoint, route.size() - 1, elapsed, min_y,
+			bus.position.x, bus.position.y, bus.position.z])
 	if driven < DRIVE_MIN_M:
 		failures.append("주행 거리 %.0fm < %.0fm" % [driven, DRIVE_MIN_M])
 	_report()
