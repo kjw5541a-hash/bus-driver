@@ -4,13 +4,34 @@
 선형으로 늘어난다.
 """
 import math
+import zlib
 
 from .geo import METERS_PER_DEG_LAT, Projector
 from .graph import RoadGraph
+from .mesh import road_width
 from .routing import _nearest_on_path
 
 MAJOR_HIGHWAYS = frozenset({"motorway", "trunk", "primary", "secondary",
                             "tertiary", "busway"})
+
+# 주요도로 3갈래(기존)만으로는 T자 골목까지 신호가 되어 24 km 노선에 172 m 마다
+# 멈춘다. 전체 갈래 4개 이상을 함께 요구하면 259 m 가 되어 실제 서울 간선도로의
+# 300~500 m 에 가까워진다.
+MIN_BRANCHES = 4
+MIN_MAJOR_BRANCHES = 3
+
+# 서울 신호교차로 수 대비 무인단속장비 수에서 잡은 어림값이다.
+CAMERA_RATIO = 0.30
+
+# 그래프 노드를 못 찾은 OSM 신호등이 쓰는 값. secondary 폭 15 m 의 절반.
+DEFAULT_AXIS_DEG = (0.0, 90.0)
+DEFAULT_HALF_WIDTH = 7.5
+
+# OSM 신호등 노드를 그래프 노드에 붙이는 한계 거리.
+SNAP_LIMIT_M = 30.0
+
+# 두 방위각을 같은 축으로 볼지 가르는 각거리.
+AXIS_TOLERANCE_DEG = 20.0
 
 
 def corridor_bbox(path_latlon: list[tuple[float, float]],
@@ -43,22 +64,66 @@ def near_path(elements: list[dict], path_xz: list[tuple[float, float]],
     return kept
 
 
+def _bearing_deg(ax: float, az: float, bx: float, bz: float) -> float:
+    """(ax, az) 에서 (bx, bz) 로 가는 방위각. 북 0, 동 90, 도, [0, 360).
+
+    월드에서 북은 -z, 동은 +x 다.
+    """
+    return math.degrees(math.atan2(bx - ax, -(bz - az))) % 360.0
+
+
+def _axis_delta(a: float, b: float) -> float:
+    """180° 로 접은 두 방위각 사이의 각거리. 0~90.
+
+    한 축의 양방향은 180° 차이라 같은 축이므로 접어서 비교한다.
+    """
+    delta = abs(a - b) % 180.0
+    return min(delta, 180.0 - delta)
+
+
+def _axis_pair(bearings: list[float]) -> tuple[float, float]:
+    """갈래 방위각들을 교차로의 두 축으로 묶는다.
+
+    축 0 은 같은 축으로 볼 이웃이 가장 많은 방위(십자 교차로면 마주보는 두
+    갈래가 접혀 이웃이 하나 더 생긴다), 축 1 은 축 0 에서 가장 먼 갈래다.
+    둘이 거의 같은 축이면 축 1 을 수직으로 채운다.
+    """
+    if not bearings:
+        return DEFAULT_AXIS_DEG
+    folded = [b % 180.0 for b in bearings]
+    # 두 번째 정렬 키는 동점일 때 결과를 고정하기 위한 것이다. 같은 입력에
+    # 항상 같은 축이 나와야 재베이크가 안정적이다.
+    first = max(folded, key=lambda b: (
+        sum(1 for other in folded if _axis_delta(b, other) <= AXIS_TOLERANCE_DEG),
+        -b))
+    second = max(folded, key=lambda b: _axis_delta(first, b))
+    if _axis_delta(first, second) < AXIS_TOLERANCE_DEG:
+        second = (first + 90.0) % 180.0
+    return (round(first, 1), round(second, 1))
+
+
+def _has_camera(x: float, z: float) -> bool:
+    """좌표만으로 정해지는 단속 카메라 설치 여부.
+
+    내장 hash() 는 문자열에 대해 프로세스마다 값이 달라서(PYTHONHASHSEED)
+    재베이크마다 카메라 위치가 바뀐다. crc32 는 고정이다.
+    """
+    key = f"{round(x, 1)},{round(z, 1)}".encode()
+    return (zlib.crc32(key) % 100) < round(CAMERA_RATIO * 100)
+
+
 def signal_candidates(graph: RoadGraph, osm_signal_nodes: list[dict],
                       projector: Projector, path_xz: list[tuple[float, float]],
                       radius_m: float) -> list[dict]:
-    """OSM 신호등 + 주요도로 3갈래 이상 교차점.
+    """OSM 신호등 + 갈래 4개 이상인 주요도로 교차점.
 
     OSM 신호등 태그는 서울에서 거의 비어 있다(밀집 도심 3 km 에 6개). 태그만으로는
     신호 시스템을 세울 수 없어서 교차점을 후보로 같이 낸다.
-    """
-    signals = []
-    for node in osm_signal_nodes:
-        xz = projector.to_xz(node["lat"], node["lon"])
-        if _nearest_on_path(path_xz, xz)[0] > radius_m:
-            continue
-        signals.append({"x": round(xz[0], 2), "z": round(xz[1], 2),
-                        "source": "osm", "roads": 0})
 
+    항목마다 두 축의 방위각(axis_deg), 가장 넓은 갈래의 반폭(half_width),
+    단속 카메라 설치 여부(camera)를 함께 낸다. 런타임이 버스가 어느 축에
+    있는지 판정하고 정지선을 놓는 데 쓴다.
+    """
     # adj 는 나가는 엣지만 담는다. 일방통행으로 들어오기만 하는 도로도 교차로의
     # 한 갈래이므로 양쪽 끝 모두에 엣지를 달아 인접 인덱스를 만든다.
     incident: dict[int, list] = {}
@@ -67,24 +132,77 @@ def signal_candidates(graph: RoadGraph, osm_signal_nodes: list[dict],
             incident.setdefault(edge.start, []).append(edge)
             incident.setdefault(edge.end, []).append(edge)
 
+    node_xz = {node_id: projector.to_xz(*graph.coords[node_id])
+               for node_id in incident}
+
+    def describe(node_id) -> dict:
+        if node_id is None:
+            return {"axis_deg": list(DEFAULT_AXIS_DEG),
+                    "half_width": DEFAULT_HALF_WIDTH}
+        x, z = node_xz[node_id]
+        bearings = []
+        for edge in incident[node_id]:
+            other = edge.end if edge.start == node_id else edge.start
+            if other not in node_xz:
+                continue
+            other_x, other_z = node_xz[other]
+            bearings.append(_bearing_deg(x, z, other_x, other_z))
+        axis = _axis_pair(bearings)
+        half = max(road_width({"highway": edge.highway})
+                   for edge in incident[node_id]) / 2.0
+        return {"axis_deg": [axis[0], axis[1]], "half_width": round(half, 2)}
+
+    def nearest_graph_node(xz):
+        # ponytail: 신호등 노드 x 그래프 노드 선형 스캔. OSM 신호등이 노선당
+        # 40개 안쪽이라 충분히 싸다. 늘어나면 격자 색인으로 바꾼다.
+        best, best_distance = None, SNAP_LIMIT_M
+        for node_id, (node_x, node_z) in node_xz.items():
+            distance = math.hypot(node_x - xz[0], node_z - xz[1])
+            if distance < best_distance:
+                best, best_distance = node_id, distance
+        return best
+
+    signals = []
+    claimed: set[int] = set()
+    for node in osm_signal_nodes:
+        xz = projector.to_xz(node["lat"], node["lon"])
+        if _nearest_on_path(path_xz, xz)[0] > radius_m:
+            continue
+        snapped = nearest_graph_node(xz)
+        if snapped is not None:
+            claimed.add(snapped)
+        entry = {"x": round(xz[0], 2), "z": round(xz[1], 2),
+                 "source": "osm", "roads": 0}
+        entry.update(describe(snapped))
+        entry["camera"] = _has_camera(entry["x"], entry["z"])
+        signals.append(entry)
+
     taken = {(s["x"], s["z"]) for s in signals}
     for node_id, edges in incident.items():
-        # "주요도로 3개 이상"은 서로 다른 way_id 가 아니라 갈래 수로 센다.
+        # OSM 태그가 이미 이 교차점을 집었으면 합성하지 않는다. 안 그러면 몇 m
+        # 어긋난 신호 두 개가 같은 교차로에 선다.
+        if node_id in claimed:
+            continue
+        # "주요도로 3갈래 이상"은 서로 다른 way_id 가 아니라 갈래 수로 센다.
         # 간선 둘이 십자로 만나는 전형적 신호 교차로는 way_id 가 2개뿐이다.
         major_branches = {edge.end if edge.start == node_id else edge.start
                           for edge in edges if edge.highway in MAJOR_HIGHWAYS}
-        if len(major_branches) < 3:
+        if len(major_branches) < MIN_MAJOR_BRANCHES:
             continue
         branches = {edge.end if edge.start == node_id else edge.start
                     for edge in edges}
-        lat, lon = graph.coords[node_id]
-        xz = projector.to_xz(lat, lon)
+        if len(branches) < MIN_BRANCHES:
+            continue
+        xz = node_xz[node_id]
         if _nearest_on_path(path_xz, xz)[0] > radius_m:
             continue
         key = (round(xz[0], 2), round(xz[1], 2))
         if key in taken:
             continue
         taken.add(key)
-        signals.append({"x": key[0], "z": key[1],
-                        "source": "synthesized", "roads": len(branches)})
+        entry = {"x": key[0], "z": key[1],
+                 "source": "synthesized", "roads": len(branches)}
+        entry.update(describe(node_id))
+        entry["camera"] = _has_camera(key[0], key[1])
+        signals.append(entry)
     return signals
