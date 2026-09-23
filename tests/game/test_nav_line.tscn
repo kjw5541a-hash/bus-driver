@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://tests/game/test_nav_line.gd" id="1"]
+
+[node name="TestNavLine" type="Node3D"]
+script = ExtResource("1")
