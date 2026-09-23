@@ -33,13 +33,16 @@ func _ready() -> void:
 	ok(drive.camera != null, "카메라가 없다")
 	# 카메라가 버스 앞을 비추면 게임이 안 된다. SpringArm3D 가 자식을 어느
 	# 축으로 밀어내는지는 눈으로 보기 전엔 헷갈리므로 여기서 단언한다.
+	# 이 단언은 ChaseCamera 가 첫 프레임에 요를 스냅해야만 의미가 있다.
+	# 지연 추종 중에는 피벗 요가 버스 요와 달라 거리 측정이 엉뚱해진다.
 	if drive.camera != null and drive.bus != null:
 		# 런타임에 만든 노드는 owner 가 없다. find_children 의 owned 를 꺼야 찾는다.
 		var camera_node := drive.camera.find_children("*", "Camera3D", true, false)[0] as Camera3D
 		var forward := -drive.bus.global_transform.basis.z
 		var offset := camera_node.global_position - drive.bus.global_position
-		ok(offset.dot(forward) < -5.0,
-			"카메라가 버스 뒤에 있지 않다 (전방 성분 %.1f m)" % offset.dot(forward))
+		var behind := -offset.dot(forward)
+		ok(behind > 10.0 and behind < 30.0,
+			"카메라가 버스 뒤 10-30 m 밖이다 (%.1f m)" % behind)
 		ok(offset.y > 2.0, "카메라가 버스보다 높지 않다 (%.1f m)" % offset.y)
 
 	if drive.data == null or drive.bus == null:
