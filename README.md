@@ -23,7 +23,10 @@ python3 -m tools.osmbake.cli bake seoul-100
 
 산출물은 노선마다 두 개다.
 
-- `assets/routes/route_<id>.glb` — 도로와 건물 메쉬. 200 m 격자 청크로 나뉜다
+- `assets/routes/route_<id>.glb` — 도로·건물·차선 도색·인도 메쉬. 200 m 격자
+  청크로 나뉜다. 도로 폭은 `lanes` 태그가 있으면 차선 수로, 없으면 등급별
+  추정 테이블로 정한다(서울 실제 기준). 인도는 교차로 둘레와 다른 도로 위를
+  비운다
 - `assets/routes/route_<id>.json` — 경로 폴리라인, 정류장, 신호 후보, 청크 경계
 
 ## 게임 실행
