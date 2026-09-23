@@ -238,6 +238,105 @@ def build_roads(ways: list[dict], projector: Projector) -> MeshBuilder:
     return builder
 
 
+MARKING_MIN_WIDTH = 9.0   # 이보다 좁으면 왕복 2차선 이하라 도색을 생략한다
+MARKING_WIDTH = 0.15
+MARKING_Y = 0.02          # 도로 리본과 패치(0.01) 위에 얹는다
+DASH_ON = 3.0
+DASH_OFF = 5.0
+ONEWAY_VALUES = frozenset({"yes", "true", "1", "-1"})
+
+
+def lane_count(tags: dict) -> int:
+    """차선 수. lanes 태그가 없으면 폭에서 되짚는다(최소 2)."""
+    lanes = tags.get("lanes")
+    if lanes is not None:
+        try:
+            value = int(lanes)
+            if value >= 1:
+                return value
+        except (TypeError, ValueError):
+            pass
+    return max(2, round(road_width(tags) / LANE_WIDTH))
+
+
+def _marking_quad(builder: MeshBuilder, ax, az, bx, bz, nx, nz,
+                  offset: float) -> None:
+    """(nx, nz) 는 단위 법선. offset 만큼 옆으로 민 얇은 띠 하나."""
+    half = MARKING_WIDTH / 2.0
+    ox, oz = nx * offset, nz * offset
+    builder.add_polygon([
+        (ax + ox + nx * half, MARKING_Y, az + oz + nz * half),
+        (bx + ox + nx * half, MARKING_Y, bz + oz + nz * half),
+        (bx + ox - nx * half, MARKING_Y, bz + oz - nz * half),
+        (ax + ox - nx * half, MARKING_Y, az + oz - nz * half),
+    ], UP)
+
+
+def _add_dashes(builder: MeshBuilder, x1, z1, ux, uz, nx, nz,
+                length: float, offset: float, phase: float) -> float:
+    """구간 위에 점선을 찍고 다음 구간에 넘길 위상을 돌려준다.
+
+    위상을 이어받지 않으면 꺾일 때마다 점선이 처음부터 다시 시작해서 칠한
+    구간이 붙어버린다.
+    """
+    period = DASH_ON + DASH_OFF
+    traveled = 0.0
+    while traveled < length:
+        phase_at = (phase + traveled) % period
+        if phase_at < DASH_ON:
+            span = min(DASH_ON - phase_at, length - traveled)
+            _marking_quad(builder,
+                          x1 + ux * traveled, z1 + uz * traveled,
+                          x1 + ux * (traveled + span), z1 + uz * (traveled + span),
+                          nx, nz, offset)
+            traveled += span
+        else:
+            traveled += period - phase_at
+    return (phase + length) % period
+
+
+def build_markings(ways: list[dict],
+                   projector: Projector) -> dict[str, MeshBuilder]:
+    """차선 도색. 중앙선(노랑 실선)과 차선 구분선(흰 점선)을 따로 낸다.
+
+    좁은 길에는 칠하지 않는다. 서울 이면도로에는 실제로 도색이 거의 없다.
+    """
+    center = MeshBuilder()
+    lane = MeshBuilder()
+    for w in ways:
+        tags = w.get("tags", {})
+        if "highway" not in tags or "geometry" not in w:
+            continue
+        width = road_width(tags)
+        if width < MARKING_MIN_WIDTH:
+            continue
+        points = [projector.to_xz(g["lat"], g["lon"]) for g in w["geometry"]]
+        oneway = tags.get("oneway") in ONEWAY_VALUES
+        lanes = lane_count(tags)
+        lane_width = width / lanes
+        # 차선 경계는 안쪽 lanes-1 개다. 왕복이면 한가운데 경계는 중앙선이
+        # 차지하므로 흰 점선에서 뺀다.
+        offsets = [-width / 2.0 + index * lane_width
+                   for index in range(1, lanes)]
+        if not oneway:
+            offsets = [o for o in offsets if abs(o) > 0.5]
+
+        phases = [0.0] * len(offsets)
+        for (x1, z1), (x2, z2) in zip(points, points[1:]):
+            dx, dz = x2 - x1, z2 - z1
+            length = math.hypot(dx, dz)
+            if length < 0.01:
+                continue
+            ux, uz = dx / length, dz / length
+            nx, nz = -uz, ux
+            if not oneway:
+                _marking_quad(center, x1, z1, x2, z2, nx, nz, 0.0)
+            for index, offset in enumerate(offsets):
+                phases[index] = _add_dashes(lane, x1, z1, ux, uz, nx, nz,
+                                            length, offset, phases[index])
+    return {"marking_center": center, "marking_lane": lane}
+
+
 CHUNK_SIZE_M = 200.0
 
 

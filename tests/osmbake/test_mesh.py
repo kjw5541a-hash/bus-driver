@@ -4,7 +4,8 @@ import unittest
 
 from tools.osmbake.geo import METERS_PER_DEG_LAT, Projector
 from tools.osmbake.mesh import (MeshBuilder, build_buildings, build_roads,
-                                 building_height, road_width, triangulate,
+                                 build_markings, building_height, lane_count,
+                                 road_width, triangulate, MARKING_Y,
                                  split_chunks)
 
 
@@ -360,3 +361,54 @@ class TestSplitChunks(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestLaneCount(unittest.TestCase):
+    def test_lanes_태그가_우선(self):
+        self.assertEqual(lane_count({"highway": "primary", "lanes": "7"}), 7)
+
+    def test_태그가_없으면_폭에서_되짚는다(self):
+        # primary 20 m / 3.2 m = 6.25 → 6
+        self.assertEqual(lane_count({"highway": "primary"}), 6)
+
+    def test_최소_두_차선(self):
+        self.assertEqual(lane_count({"highway": "service"}), 2)
+
+
+class TestBuildMarkings(unittest.TestCase):
+    def setUp(self):
+        self.projector = Projector(37.500, 127.000)
+
+    def _way(self, meters: float, **tags):
+        """정북 방향 직선 하나. 길이를 미터로 바로 준다."""
+        tags.setdefault("highway", "primary")
+        delta = meters / METERS_PER_DEG_LAT
+        coords = [(37.500, 127.000), (37.500 + delta, 127.000)]
+        return {"type": "way", "id": 1, "nodes": [0, 1],
+                "geometry": [{"lat": lat, "lon": lon} for lat, lon in coords],
+                "tags": tags}
+
+    def test_좁은_길에는_도색하지_않는다(self):
+        surfaces = build_markings([self._way(50.0, highway="residential")],
+                                  self.projector)
+        self.assertEqual(surfaces["marking_center"].triangle_count(), 0)
+        self.assertEqual(surfaces["marking_lane"].triangle_count(), 0)
+
+    def test_왕복_도로에는_중앙선_실선(self):
+        surfaces = build_markings([self._way(50.0)], self.projector)
+        self.assertEqual(surfaces["marking_center"].triangle_count(), 2)
+
+    def test_일방통행에는_중앙선이_없다(self):
+        surfaces = build_markings([self._way(50.0, oneway="yes")], self.projector)
+        self.assertEqual(surfaces["marking_center"].triangle_count(), 0)
+
+    def test_점선은_주기마다_한_칸(self):
+        # primary 6차선 왕복 → 흰 점선 4줄(안쪽 경계 5개 중 중앙선 자리 제외).
+        # 8 m = DASH_ON + DASH_OFF 라 줄마다 칠한 칸 하나, 사각형 하나.
+        surfaces = build_markings([self._way(8.0)], self.projector)
+        self.assertEqual(surfaces["marking_lane"].triangle_count(), 4 * 2)
+
+    def test_도색은_도로면_위에_있다(self):
+        surfaces = build_markings([self._way(50.0)], self.projector)
+        ys = {round(p[1], 4) for p in surfaces["marking_center"].positions}
+        self.assertEqual(ys, {MARKING_Y})
