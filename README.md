@@ -29,6 +29,11 @@ python3 -m tools.osmbake.cli bake seoul-100
   비운다
 - `assets/routes/route_<id>.json` — 경로 폴리라인, 정류장, 신호 후보, 청크 경계
 
+`signals` 는 교차로마다 위치(`x`, `z`), 두 축의 방위각(`axis_deg`), 교차로 반폭
+(`half_width`), 무인단속 카메라 유무(`camera`)를 담는다. OSM 의 `traffic_signals`
+태그를 쓰되 진입 방향마다 찍힌 노드를 40 m 반경으로 병합하고, 태그가 없는 큰
+교차로는 갈래 수를 보고 합성한다. 노선당 평균 간격은 230~320 m 다.
+
 ## 게임 실행
 
 ```bash
@@ -39,6 +44,11 @@ godot
 후진), `A`/`D` 조향, `R` 리스폰이다. 화면 왼쪽 절반을 끌면 터치 조향, 오른쪽 아래
 버튼이 가속·제동·후진·복귀다. 시점은 마우스 우클릭 드래그로 돌리고 휠로
 당기며, 휠 클릭으로 기본 시점에 돌아온다.
+
+교차로에는 신호등이 서 있고 두 축이 반주기씩 번갈아 녹색이 된다. 적색에 정지선을
+넘으면 위반이 세어져 좌상단에 표시된다. 카메라가 달린 교차로는 따로 세고, 노선을
+왕복하는 순찰 경찰차 시야 안에서 위반하면 적발되어 주행이 끝난다. 이때 `R` 로 다시
+시작한다.
 
 ## 테스트
 
@@ -64,3 +74,5 @@ godot res://tests/game/measure_fps.tscn -- --route=seoul-100
 - 구현 계획: `docs/superpowers/plans/2026-09-22-osm-bake-pipeline.md`
 - 설계: `docs/superpowers/specs/2026-09-23-bus-physics-input-design.md`
 - 구현 계획: `docs/superpowers/plans/2026-09-23-bus-physics-input.md`
+- 설계: `docs/superpowers/specs/2026-09-23-signals-violations-design.md`
+- 구현 계획: `docs/superpowers/plans/2026-09-23-signals-violations.md`
