@@ -11,6 +11,7 @@ var bus: Bus
 var city: City
 var input: BusInput
 var camera: ChaseCamera
+var touch: TouchControls
 
 func _ready() -> void:
 	var route_id := route_id_from_args()
@@ -44,6 +45,10 @@ func _ready() -> void:
 	camera.target = bus
 	add_child(camera)
 
+	touch = TouchControls.new()
+	touch.input = input
+	add_child(touch)
+
 func route_id_from_args() -> String:
 	"""--route=<id> 가 있으면 그것, 없으면 메뉴가 고른 노선."""
 	for argument in OS.get_cmdline_user_args():
@@ -62,7 +67,11 @@ func _physics_process(delta: float) -> void:
 		return
 	input.poll(bus.linear_velocity.length())
 	bus.apply_axes(input.steer, input.throttle, input.brake, input.reverse, delta)
-	if input.take_respawn():
+	var respawn_asked := input.take_respawn()
+	if touch != null and touch.respawn_requested:
+		touch.respawn_requested = false
+		respawn_asked = true
+	if respawn_asked:
 		respawn()
 
 func respawn() -> void:

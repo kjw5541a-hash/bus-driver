@@ -45,7 +45,9 @@ for route in "${routes[@]}"; do
 	# --quit-after 는 정상 종료(get_tree().quit())를 못 했을 때의 안전망 프레임 상한.
 	# 20km 노선을 32km/h 로 달리면 약 135,000 프레임(60fps 기준)인데 교착/우회 여유를
 	# 감안해 400,000 으로 잡는다.
-	if "$GODOT_BIN" --headless --fixed-fps 60 --quit-after 400000 -- --route="$route"; then
+	# main_scene 은 게임 메뉴라 검증 씬 경로를 직접 준다.
+	if "$GODOT_BIN" --headless --fixed-fps 60 --quit-after 400000 \
+			res://tests/bake/verify.tscn -- --route="$route"; then
 		echo "$route: OK"
 	else
 		echo "$route: FAIL"

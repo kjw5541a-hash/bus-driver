@@ -2,7 +2,7 @@ config_version=5
 
 [application]
 config/name="버스 운전"
-run/main_scene="res://tests/bake/verify.tscn"
+run/main_scene="res://scenes/menu.tscn"
 config/features=PackedStringArray("4.7", "Forward Plus")
 config/icon="res://icon.svg"
 
