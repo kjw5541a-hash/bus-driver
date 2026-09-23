@@ -14,6 +14,7 @@ var to_name := ""
 var route: PackedVector3Array = []
 var stops: Array = []
 var chunks: Array = []
+var signals: Array = []
 
 static func load_route(route_id: String) -> RouteData:
 	var raw := FileAccess.get_file_as_string("res://assets/routes/route_%s.json" % route_id)
@@ -35,6 +36,9 @@ static func load_route(route_id: String) -> RouteData:
 		data.route.append(Vector3(point[0], 0.0, point[1]))
 	data.stops = parsed.get("stops", [])
 	data.chunks = parsed.get("chunks", [])
+	# 구 버전 산출물에는 signals 가 없거나 axis_deg 가 빠져 있다. 비어 있으면
+	# 신호 관련 노드가 조용히 아무것도 안 하도록 그대로 넘긴다.
+	data.signals = parsed.get("signals", [])
 	return data
 
 static func list_route_ids() -> PackedStringArray:

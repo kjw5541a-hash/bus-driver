@@ -119,4 +119,19 @@ func _report() -> void:
 	done = true
 	print("주행 %.0fm, 경로점 %d/%d" % [driven, guide_index, drive.data.route.size() - 1])
 	ok(driven >= DRIVE_MIN_M, "주행 거리 %.0fm < %.0fm" % [driven, DRIVE_MIN_M])
+
+	# 신호등이 섰는지, 근거리 컬링이 실제로 도는지 본다.
+	ok(drive.signal_field != null, "SignalField 가 없다")
+	ok(drive.watch != null, "ViolationWatch 가 없다")
+	ok(drive.patrol != null, "PatrolCars 가 없다")
+	ok(drive.signal_field.head_count == drive.data.signals.size() * 4,
+		"기둥이 %d 개인데 신호는 %d 개다"
+		% [drive.signal_field.head_count, drive.data.signals.size()])
+	ok(drive.signal_field.updated_count > 0, "기둥을 하나도 갱신하지 않았다")
+	ok(drive.signal_field.updated_count < drive.signal_field.head_count,
+		"근거리 컬링이 안 걸려 기둥 %d 개를 전부 갱신했다"
+		% drive.signal_field.head_count)
+	# 신호 기둥에는 충돌면이 없어야 한다. 있으면 인도 위 기둥에 버스가 걸린다.
+	ok(drive.signal_field.find_children("*", "StaticBody3D", true, false).is_empty(),
+		"신호 기둥에 충돌면이 붙었다")
 	finish()

@@ -16,6 +16,17 @@ func _ready() -> void:
 	ok(data.route.size() > 100, "경로점이 %d 개뿐이다" % data.route.size())
 	ok(data.stops.size() > 10, "정류장이 %d 개뿐이다" % data.stops.size())
 	ok(data.chunks.size() > 0, "청크가 없다")
+	ok(data.signals.size() > 10, "신호가 %d 개뿐이다" % data.signals.size())
+
+	# 신호는 4번 서브프로젝트 계약대로 축 방위각과 반폭, 카메라를 가진다.
+	var signal_entry: Dictionary = data.signals[0]
+	ok(signal_entry.has("x") and signal_entry.has("z"),
+		"신호 좌표가 없다: %s" % str(signal_entry))
+	ok(signal_entry.has("axis_deg") and signal_entry["axis_deg"].size() == 2,
+		"신호 축 방위각 계약이 다르다: %s" % str(signal_entry))
+	ok(signal_entry.has("half_width") and float(signal_entry["half_width"]) > 0.0,
+		"신호 반폭이 없다: %s" % str(signal_entry))
+	ok(signal_entry.has("camera"), "신호 카메라 필드가 없다: %s" % str(signal_entry))
 
 	# 경로는 (x, z) 평면이다. y 는 전부 0 이어야 한다.
 	for point in data.route:

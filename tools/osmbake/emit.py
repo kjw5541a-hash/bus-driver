@@ -17,7 +17,8 @@ def write_route_json(path: Path, spec: RouteSpec, *, origin, route_xz, stops,
         origin: (위도, 경도) 튜플
         route_xz: [(x, z), ...] 경로 좌표
         stops: [{"name", "x", "z", "progress_m", "osm_node"}, ...] 정류장
-        signals: [{"x", "z", "source", "roads"}, ...] 신호기
+        signals: [{"x", "z", "source", "roads", "axis_deg", "half_width",
+                   "camera"}, ...] 신호기
         chunks: [{"name": str, "min": [x, z], "max": [x, z]}, ...] 청크 경계상자
         baked_at: ISO 8601 타임스탬프
 

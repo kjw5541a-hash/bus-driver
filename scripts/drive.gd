@@ -12,6 +12,10 @@ var city: City
 var input: BusInput
 var camera: ChaseCamera
 var touch: TouchControls
+var signal_field: SignalField
+var patrol: PatrolCars
+var watch: ViolationWatch
+var hud: ViolationHud
 
 func _ready() -> void:
 	var route_id := route_id_from_args()
@@ -49,6 +53,26 @@ func _ready() -> void:
 	touch.input = input
 	add_child(touch)
 
+	signal_field = SignalField.new()
+	signal_field.build(data.signals)
+	signal_field.target = bus
+	add_child(signal_field)
+
+	patrol = PatrolCars.new()
+	patrol.build(data.route)
+	add_child(patrol)
+
+	watch = ViolationWatch.new()
+	watch.build(data.signals)
+	watch.bus = bus
+	watch.patrol = patrol
+	add_child(watch)
+
+	hud = ViolationHud.new()
+	add_child(hud)
+	watch.violation.connect(hud.on_violation)
+	watch.busted.connect(hud.on_busted)
+
 func route_id_from_args() -> String:
 	"""--route=<id> 가 있으면 그것, 없으면 메뉴가 고른 노선."""
 	for argument in OS.get_cmdline_user_args():
@@ -64,6 +88,12 @@ func _place_at_start() -> void:
 
 func _physics_process(delta: float) -> void:
 	if bus == null or input == null:
+		return
+	if watch != null and watch.is_busted:
+		# 적발되면 조향과 가속을 끊고 브레이크만 건다. 버스가 서서히 선다.
+		bus.apply_axes(0.0, 0.0, 1.0, false, delta)
+		if Input.is_key_pressed(KEY_R):
+			get_tree().reload_current_scene()
 		return
 	input.poll(bus.linear_velocity.length())
 	bus.apply_axes(input.steer, input.throttle, input.brake, input.reverse, delta)

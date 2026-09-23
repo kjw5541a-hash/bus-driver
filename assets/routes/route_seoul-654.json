@@ -2870,1318 +2870,1012 @@
  ],
  "signals": [
   {
-   "x": -2518.16,
-   "z": -2348.33,
-   "source": "osm",
-   "roads": 0
-  },
-  {
-   "x": 2443.59,
-   "z": 3954.21,
-   "source": "osm",
-   "roads": 0
-  },
-  {
-   "x": 2165.98,
-   "z": 3915.37,
-   "source": "osm",
-   "roads": 0
-  },
-  {
-   "x": 5803.41,
-   "z": 2387.07,
-   "source": "osm",
-   "roads": 0
-  },
-  {
-   "x": 5237.98,
-   "z": 2380.9,
-   "source": "osm",
-   "roads": 0
-  },
-  {
-   "x": 2198.01,
-   "z": 3856.73,
-   "source": "osm",
-   "roads": 0
-  },
-  {
-   "x": -1488.5,
-   "z": -1840.13,
-   "source": "osm",
-   "roads": 0
-  },
-  {
-   "x": -1460.58,
-   "z": 969.19,
-   "source": "osm",
-   "roads": 0
-  },
-  {
-   "x": -3286.08,
-   "z": -2705.28,
-   "source": "osm",
-   "roads": 0
-  },
-  {
-   "x": -3699.95,
-   "z": -2886.37,
-   "source": "osm",
-   "roads": 0
-  },
-  {
-   "x": 5594.89,
-   "z": 2351.62,
-   "source": "osm",
-   "roads": 0
-  },
-  {
-   "x": -3147.74,
-   "z": -2687.79,
-   "source": "osm",
-   "roads": 0
-  },
-  {
-   "x": -3103.39,
-   "z": -2766.23,
-   "source": "osm",
-   "roads": 0
-  },
-  {
-   "x": -4764.14,
-   "z": -2800.42,
-   "source": "osm",
-   "roads": 0
-  },
-  {
-   "x": -4771.72,
-   "z": -2731.7,
-   "source": "osm",
-   "roads": 0
-  },
-  {
-   "x": -4737.86,
-   "z": -2774.81,
-   "source": "osm",
-   "roads": 0
-  },
-  {
-   "x": -4795.88,
-   "z": -2756.36,
-   "source": "osm",
-   "roads": 0
-  },
-  {
-   "x": 5806.61,
-   "z": 2374.34,
-   "source": "osm",
-   "roads": 0
-  },
-  {
-   "x": -4715.84,
-   "z": -3005.5,
-   "source": "osm",
-   "roads": 0
-  },
-  {
-   "x": -4766.09,
-   "z": -3011.63,
-   "source": "osm",
-   "roads": 0
-  },
-  {
-   "x": -4740.79,
-   "z": -2991.71,
-   "source": "osm",
-   "roads": 0
-  },
-  {
-   "x": -4174.32,
-   "z": -2921.33,
-   "source": "osm",
-   "roads": 0
-  },
-  {
-   "x": -4192.58,
-   "z": -2941.96,
-   "source": "osm",
-   "roads": 0
-  },
-  {
-   "x": -4151.2,
-   "z": -2936.86,
-   "source": "osm",
-   "roads": 0
-  },
-  {
-   "x": -4482.87,
-   "z": -2977.67,
-   "source": "osm",
-   "roads": 0
-  },
-  {
-   "x": -4454.73,
-   "z": -2974.26,
-   "source": "osm",
-   "roads": 0
-  },
-  {
-   "x": -4469.78,
-   "z": -2962.51,
-   "source": "osm",
-   "roads": 0
-  },
-  {
-   "x": 5594.82,
-   "z": 2338.72,
-   "source": "osm",
-   "roads": 0
-  },
-  {
-   "x": 5237.66,
-   "z": 2366.35,
-   "source": "osm",
-   "roads": 0
-  },
-  {
-   "x": 5437.95,
-   "z": 2351.36,
-   "source": "osm",
-   "roads": 0
-  },
-  {
-   "x": 5438.68,
-   "z": 2364.63,
-   "source": "osm",
-   "roads": 0
-  },
-  {
-   "x": -1492.9,
-   "z": -1861.19,
-   "source": "osm",
-   "roads": 0
-  },
-  {
-   "x": 158.66,
-   "z": 3662.02,
-   "source": "synthesized",
-   "roads": 3
-  },
-  {
-   "x": -5973.98,
-   "z": -4874.66,
-   "source": "synthesized",
-   "roads": 4
-  },
-  {
-   "x": -6053.89,
-   "z": -4601.89,
-   "source": "synthesized",
-   "roads": 4
-  },
-  {
-   "x": 1071.5,
-   "z": 4939.63,
-   "source": "synthesized",
-   "roads": 4
-  },
-  {
-   "x": -3223.11,
-   "z": -2565.96,
-   "source": "synthesized",
-   "roads": 5
-  },
-  {
-   "x": -3211.51,
-   "z": -2580.98,
-   "source": "synthesized",
-   "roads": 5
-  },
-  {
-   "x": -2932.99,
-   "z": -2522.05,
-   "source": "synthesized",
-   "roads": 3
-  },
-  {
-   "x": -6086.37,
-   "z": -3385.51,
-   "source": "synthesized",
-   "roads": 3
-  },
-  {
-   "x": -6101.56,
-   "z": -3667.2,
-   "source": "synthesized",
-   "roads": 4
-  },
-  {
-   "x": -6123.82,
-   "z": -4167.98,
-   "source": "synthesized",
-   "roads": 4
-  },
-  {
-   "x": -6128.67,
-   "z": -4294.51,
-   "source": "synthesized",
-   "roads": 5
-  },
-  {
-   "x": -620.25,
-   "z": 2608.34,
-   "source": "synthesized",
-   "roads": 3
-  },
-  {
-   "x": -921.48,
-   "z": 1851.87,
-   "source": "synthesized",
-   "roads": 3
-  },
-  {
-   "x": -917.77,
-   "z": 1820.89,
-   "source": "synthesized",
-   "roads": 3
-  },
-  {
-   "x": -6197.32,
-   "z": -4943.68,
-   "source": "synthesized",
-   "roads": 3
-  },
-  {
-   "x": -982.08,
-   "z": 2314.56,
-   "source": "synthesized",
-   "roads": 4
-  },
-  {
-   "x": -1199.2,
-   "z": 2013.82,
-   "source": "synthesized",
-   "roads": 3
-  },
-  {
-   "x": 3483.19,
-   "z": 4051.21,
-   "source": "synthesized",
-   "roads": 5
-  },
-  {
-   "x": 3470.74,
-   "z": 4044.19,
-   "source": "synthesized",
-   "roads": 5
-  },
-  {
-   "x": -1288.94,
-   "z": 1561.49,
-   "source": "synthesized",
-   "roads": 3
-  },
-  {
-   "x": -1025.8,
-   "z": 2216.45,
-   "source": "synthesized",
-   "roads": 3
-  },
-  {
-   "x": -1265.37,
-   "z": 1850.47,
-   "source": "synthesized",
-   "roads": 3
-  },
-  {
-   "x": -1070.76,
-   "z": 1508.63,
-   "source": "synthesized",
-   "roads": 3
-  },
-  {
-   "x": -6010.11,
-   "z": -3653.38,
-   "source": "synthesized",
-   "roads": 4
-  },
-  {
-   "x": 5033.26,
-   "z": 3411.8,
-   "source": "synthesized",
-   "roads": 3
-  },
-  {
-   "x": 448.94,
-   "z": 4038.32,
-   "source": "synthesized",
-   "roads": 4
-  },
-  {
-   "x": -6269.32,
-   "z": -2954.25,
-   "source": "synthesized",
-   "roads": 3
-  },
-  {
-   "x": -6189.15,
-   "z": -2945.04,
-   "source": "synthesized",
-   "roads": 3
-  },
-  {
-   "x": -1381.96,
-   "z": 1901.32,
-   "source": "synthesized",
-   "roads": 3
-  },
-  {
-   "x": -1530.02,
-   "z": 954.36,
-   "source": "synthesized",
-   "roads": 4
-  },
-  {
-   "x": -1519.06,
-   "z": 977.85,
-   "source": "synthesized",
-   "roads": 3
-  },
-  {
-   "x": 5238.14,
-   "z": 2408.5,
-   "source": "synthesized",
-   "roads": 5
-  },
-  {
-   "x": 5176.05,
-   "z": 3261.92,
-   "source": "synthesized",
-   "roads": 4
-  },
-  {
-   "x": -1597.1,
-   "z": -1924.21,
-   "source": "synthesized",
-   "roads": 3
-  },
-  {
-   "x": 5795.34,
-   "z": 2292.66,
-   "source": "synthesized",
-   "roads": 3
-  },
-  {
-   "x": 5747.11,
-   "z": 2358.79,
-   "source": "synthesized",
-   "roads": 3
-  },
-  {
-   "x": 4721.26,
-   "z": 3656.59,
-   "source": "synthesized",
-   "roads": 3
-  },
-  {
-   "x": 4544.55,
-   "z": 3870.81,
-   "source": "synthesized",
-   "roads": 4
-  },
-  {
-   "x": 4506.57,
-   "z": 3824.89,
-   "source": "synthesized",
-   "roads": 3
-  },
-  {
-   "x": 4177.99,
-   "z": 3993.93,
-   "source": "synthesized",
-   "roads": 4
-  },
-  {
-   "x": 5162.75,
-   "z": 3318.87,
-   "source": "synthesized",
-   "roads": 4
-  },
-  {
-   "x": -6568.8,
-   "z": -3203.43,
-   "source": "synthesized",
-   "roads": 3
-  },
-  {
-   "x": -1499.73,
-   "z": 549.6,
-   "source": "synthesized",
-   "roads": 4
-  },
-  {
-   "x": -1483.69,
-   "z": 574.54,
-   "source": "synthesized",
-   "roads": 4
-  },
-  {
-   "x": -1497.0,
-   "z": 576.73,
-   "source": "synthesized",
-   "roads": 4
-  },
-  {
-   "x": -1486.28,
-   "z": 547.32,
-   "source": "synthesized",
-   "roads": 4
-  },
-  {
-   "x": -1469.84,
-   "z": 794.87,
-   "source": "synthesized",
-   "roads": 4
-  },
-  {
-   "x": -1479.65,
-   "z": 793.07,
-   "source": "synthesized",
-   "roads": 4
-  },
-  {
-   "x": -1516.7,
-   "z": 276.81,
-   "source": "synthesized",
-   "roads": 4
-  },
-  {
-   "x": -602.63,
-   "z": 2598.01,
-   "source": "synthesized",
-   "roads": 3
-  },
-  {
-   "x": -801.69,
-   "z": 3041.68,
-   "source": "synthesized",
-   "roads": 3
-  },
-  {
-   "x": -729.68,
-   "z": 2814.74,
-   "source": "synthesized",
-   "roads": 4
-  },
-  {
-   "x": -5348.86,
-   "z": -2656.05,
-   "source": "synthesized",
-   "roads": 4
-  },
-  {
-   "x": -6552.59,
-   "z": -3207.98,
-   "source": "synthesized",
-   "roads": 3
-  },
-  {
-   "x": 3640.65,
-   "z": 4132.17,
-   "source": "synthesized",
-   "roads": 3
-  },
-  {
-   "x": 3637.44,
-   "z": 4120.7,
-   "source": "synthesized",
-   "roads": 3
-  },
-  {
-   "x": -3833.79,
-   "z": -2641.4,
-   "source": "synthesized",
-   "roads": 3
-  },
-  {
-   "x": 4178.46,
-   "z": 3908.63,
-   "source": "synthesized",
-   "roads": 4
-  },
-  {
-   "x": 3480.51,
-   "z": 3888.29,
-   "source": "synthesized",
-   "roads": 5
-  },
-  {
-   "x": 3490.1,
-   "z": 3888.64,
-   "source": "synthesized",
-   "roads": 4
-  },
-  {
-   "x": 2471.84,
-   "z": 3865.55,
-   "source": "synthesized",
-   "roads": 4
-  },
-  {
-   "x": -1120.43,
-   "z": 1741.13,
-   "source": "synthesized",
-   "roads": 3
-  },
-  {
-   "x": -964.31,
-   "z": 1816.66,
-   "source": "synthesized",
-   "roads": 4
-  },
-  {
-   "x": -1363.84,
-   "z": 1375.4,
-   "source": "synthesized",
-   "roads": 4
-  },
-  {
-   "x": -1593.78,
-   "z": 1403.78,
-   "source": "synthesized",
-   "roads": 3
-  },
-  {
-   "x": 3655.14,
-   "z": 4118.77,
-   "source": "synthesized",
-   "roads": 3
-  },
-  {
-   "x": -1521.89,
-   "z": -494.07,
-   "source": "synthesized",
-   "roads": 3
-  },
-  {
-   "x": 5916.3,
-   "z": 2417.97,
-   "source": "synthesized",
-   "roads": 3
+   "x": -93.9,
+   "z": 3544.73,
+   "source": "synthesized",
+   "roads": 7,
+   "axis_deg": [
+    128.1,
+    36.8
+   ],
+   "half_width": 7.5,
+   "camera": false
   },
   {
    "x": 88.01,
    "z": 3383.57,
    "source": "synthesized",
-   "roads": 6
+   "roads": 6,
+   "axis_deg": [
+    40.3,
+    15.9
+   ],
+   "half_width": 10.0,
+   "camera": false
   },
   {
-   "x": -941.22,
-   "z": 1825.95,
+   "x": -6128.67,
+   "z": -4294.51,
    "source": "synthesized",
-   "roads": 3
-  },
-  {
-   "x": 106.5,
-   "z": 3774.79,
-   "source": "synthesized",
-   "roads": 3
-  },
-  {
-   "x": 144.68,
-   "z": 3805.25,
-   "source": "synthesized",
-   "roads": 5
-  },
-  {
-   "x": 140.26,
-   "z": 4098.13,
-   "source": "synthesized",
-   "roads": 4
-  },
-  {
-   "x": 149.93,
-   "z": 4098.18,
-   "source": "synthesized",
-   "roads": 3
-  },
-  {
-   "x": -93.9,
-   "z": 3544.73,
-   "source": "synthesized",
-   "roads": 7
-  },
-  {
-   "x": -6506.45,
-   "z": -2986.49,
-   "source": "synthesized",
-   "roads": 4
-  },
-  {
-   "x": -6504.65,
-   "z": -3002.28,
-   "source": "synthesized",
-   "roads": 4
-  },
-  {
-   "x": -6428.86,
-   "z": -2974.8,
-   "source": "synthesized",
-   "roads": 3
-  },
-  {
-   "x": -2082.59,
-   "z": -2165.02,
-   "source": "synthesized",
-   "roads": 3
-  },
-  {
-   "x": -2300.73,
-   "z": -2263.06,
-   "source": "synthesized",
-   "roads": 4
-  },
-  {
-   "x": -2522.39,
-   "z": -2338.78,
-   "source": "synthesized",
-   "roads": 4
-  },
-  {
-   "x": -2515.23,
-   "z": -2354.61,
-   "source": "synthesized",
-   "roads": 5
-  },
-  {
-   "x": -2735.91,
-   "z": -2453.0,
-   "source": "synthesized",
-   "roads": 4
-  },
-  {
-   "x": -2308.53,
-   "z": -2248.94,
-   "source": "synthesized",
-   "roads": 5
-  },
-  {
-   "x": -2742.77,
-   "z": -2436.52,
-   "source": "synthesized",
-   "roads": 5
-  },
-  {
-   "x": -1256.04,
-   "z": 1007.55,
-   "source": "synthesized",
-   "roads": 4
-  },
-  {
-   "x": -1287.45,
-   "z": -1716.11,
-   "source": "synthesized",
-   "roads": 3
-  },
-  {
-   "x": -1782.2,
-   "z": -2026.53,
-   "source": "synthesized",
-   "roads": 3
-  },
-  {
-   "x": -1482.22,
-   "z": -1800.87,
-   "source": "synthesized",
-   "roads": 3
-  },
-  {
-   "x": -5674.89,
-   "z": -2875.91,
-   "source": "synthesized",
-   "roads": 4
-  },
-  {
-   "x": -5675.38,
-   "z": -2887.52,
-   "source": "synthesized",
-   "roads": 4
-  },
-  {
-   "x": -5328.66,
-   "z": -2829.75,
-   "source": "synthesized",
-   "roads": 5
-  },
-  {
-   "x": -5675.64,
-   "z": -2893.92,
-   "source": "synthesized",
-   "roads": 4
+   "roads": 5,
+   "axis_deg": [
+    4.3,
+    84.8
+   ],
+   "half_width": 7.5,
+   "camera": false
   },
   {
    "x": -5691.9,
    "z": -2896.07,
    "source": "synthesized",
-   "roads": 5
+   "roads": 5,
+   "axis_deg": [
+    97.5,
+    2.0
+   ],
+   "half_width": 10.0,
+   "camera": false
   },
   {
-   "x": -5692.29,
-   "z": -2884.79,
+   "x": -5328.66,
+   "z": -2829.75,
    "source": "synthesized",
-   "roads": 4
-  },
-  {
-   "x": -6034.5,
-   "z": -2940.07,
-   "source": "synthesized",
-   "roads": 3
-  },
-  {
-   "x": -6237.43,
-   "z": -2968.04,
-   "source": "synthesized",
-   "roads": 3
-  },
-  {
-   "x": -6427.47,
-   "z": -2987.93,
-   "source": "synthesized",
-   "roads": 4
-  },
-  {
-   "x": -6519.26,
-   "z": -3005.42,
-   "source": "synthesized",
-   "roads": 4
-  },
-  {
-   "x": -3760.9,
-   "z": -2649.59,
-   "source": "synthesized",
-   "roads": 5
-  },
-  {
-   "x": -3764.78,
-   "z": -2634.62,
-   "source": "synthesized",
-   "roads": 5
-  },
-  {
-   "x": -3826.91,
-   "z": -2662.9,
-   "source": "synthesized",
-   "roads": 3
-  },
-  {
-   "x": -3812.04,
-   "z": -2723.42,
-   "source": "synthesized",
-   "roads": 4
-  },
-  {
-   "x": -3432.87,
-   "z": -2593.22,
-   "source": "synthesized",
-   "roads": 3
-  },
-  {
-   "x": -3995.9,
-   "z": -2682.05,
-   "source": "synthesized",
-   "roads": 3
-  },
-  {
-   "x": -4201.15,
-   "z": -2705.89,
-   "source": "synthesized",
-   "roads": 5
-  },
-  {
-   "x": -4203.53,
-   "z": -2689.01,
-   "source": "synthesized",
-   "roads": 5
-  },
-  {
-   "x": -4496.05,
-   "z": -2740.18,
-   "source": "synthesized",
-   "roads": 4
-  },
-  {
-   "x": -4559.1,
-   "z": -2748.1,
-   "source": "synthesized",
-   "roads": 3
-  },
-  {
-   "x": -4487.64,
-   "z": -2808.21,
-   "source": "synthesized",
-   "roads": 3
-  },
-  {
-   "x": -4498.92,
-   "z": -2721.21,
-   "source": "synthesized",
-   "roads": 4
-  },
-  {
-   "x": -4767.93,
-   "z": -2775.14,
-   "source": "synthesized",
-   "roads": 5
-  },
-  {
-   "x": -1540.99,
-   "z": -1553.94,
-   "source": "synthesized",
-   "roads": 3
-  },
-  {
-   "x": -1504.75,
-   "z": -491.67,
-   "source": "synthesized",
-   "roads": 4
-  },
-  {
-   "x": -1501.22,
-   "z": 274.39,
-   "source": "synthesized",
-   "roads": 4
-  },
-  {
-   "x": -360.49,
-   "z": 3259.54,
-   "source": "synthesized",
-   "roads": 3
-  },
-  {
-   "x": 1264.81,
-   "z": 4787.7,
-   "source": "synthesized",
-   "roads": 4
-  },
-  {
-   "x": -726.95,
-   "z": 2757.57,
-   "source": "synthesized",
-   "roads": 3
-  },
-  {
-   "x": -704.37,
-   "z": 2771.04,
-   "source": "synthesized",
-   "roads": 3
-  },
-  {
-   "x": -746.28,
-   "z": 2792.9,
-   "source": "synthesized",
-   "roads": 4
-  },
-  {
-   "x": 1307.97,
-   "z": 4753.63,
-   "source": "synthesized",
-   "roads": 4
-  },
-  {
-   "x": 4170.72,
-   "z": 4044.53,
-   "source": "synthesized",
-   "roads": 3
-  },
-  {
-   "x": -1530.08,
-   "z": -1550.25,
-   "source": "synthesized",
-   "roads": 3
-  },
-  {
-   "x": -2367.1,
-   "z": -2293.38,
-   "source": "synthesized",
-   "roads": 3
-  },
-  {
-   "x": -3731.08,
-   "z": -2763.27,
-   "source": "synthesized",
-   "roads": 4
-  },
-  {
-   "x": -3797.25,
-   "z": -2778.44,
-   "source": "synthesized",
-   "roads": 4
-  },
-  {
-   "x": -3764.99,
-   "z": -2893.33,
-   "source": "synthesized",
-   "roads": 4
-  },
-  {
-   "x": -3517.07,
-   "z": -2618.25,
-   "source": "synthesized",
-   "roads": 3
-  },
-  {
-   "x": -4785.15,
-   "z": -2582.36,
-   "source": "synthesized",
-   "roads": 4
-  },
-  {
-   "x": -4775.87,
-   "z": -2680.64,
-   "source": "synthesized",
-   "roads": 4
-  },
-  {
-   "x": -5051.48,
-   "z": -2717.45,
-   "source": "synthesized",
-   "roads": 3
-  },
-  {
-   "x": -4509.86,
-   "z": -2650.35,
-   "source": "synthesized",
-   "roads": 4
+   "roads": 5,
+   "axis_deg": [
+    5.5,
+    96.4
+   ],
+   "half_width": 10.0,
+   "camera": false
   },
   {
    "x": -4769.45,
    "z": -2756.5,
    "source": "synthesized",
-   "roads": 5
+   "roads": 5,
+   "axis_deg": [
+    4.7,
+    93.1
+   ],
+   "half_width": 10.0,
+   "camera": true
   },
   {
-   "x": 5790.05,
-   "z": 2284.18,
+   "x": -4203.53,
+   "z": -2689.01,
    "source": "synthesized",
-   "roads": 3
+   "roads": 5,
+   "axis_deg": [
+    7.2,
+    96.5
+   ],
+   "half_width": 10.0,
+   "camera": false
   },
   {
-   "x": -4402.51,
-   "z": -2711.5,
+   "x": -3764.78,
+   "z": -2634.62,
    "source": "synthesized",
-   "roads": 3
+   "roads": 5,
+   "axis_deg": [
+    14.2,
+    102.1
+   ],
+   "half_width": 10.0,
+   "camera": false
   },
   {
-   "x": -4014.07,
-   "z": -2665.57,
+   "x": -3223.11,
+   "z": -2565.96,
    "source": "synthesized",
-   "roads": 3
+   "roads": 5,
+   "axis_deg": [
+    36.9,
+    98.6
+   ],
+   "half_width": 10.0,
+   "camera": false
   },
   {
-   "x": -3964.26,
-   "z": -2659.85,
+   "x": -2742.77,
+   "z": -2436.52,
    "source": "synthesized",
-   "roads": 3
+   "roads": 5,
+   "axis_deg": [
+    22.6,
+    114.8
+   ],
+   "half_width": 10.0,
+   "camera": false
   },
   {
-   "x": -5669.24,
-   "z": -3144.17,
+   "x": -2515.23,
+   "z": -2354.61,
    "source": "synthesized",
-   "roads": 3
+   "roads": 5,
+   "axis_deg": [
+    23.5,
+    114.0
+   ],
+   "half_width": 10.0,
+   "camera": false
   },
   {
-   "x": -5326.68,
-   "z": -2842.85,
+   "x": -2308.53,
+   "z": -2248.94,
    "source": "synthesized",
-   "roads": 5
+   "roads": 5,
+   "axis_deg": [
+    28.9,
+    116.0
+   ],
+   "half_width": 10.0,
+   "camera": true
   },
   {
-   "x": -5043.45,
-   "z": -2810.97,
+   "x": 144.68,
+   "z": 3805.25,
    "source": "synthesized",
-   "roads": 3
+   "roads": 5,
+   "axis_deg": [
+    128.6,
+    1.6
+   ],
+   "half_width": 7.5,
+   "camera": false
   },
   {
-   "x": -5009.54,
-   "z": -3040.52,
+   "x": 3470.74,
+   "z": 4044.19,
    "source": "synthesized",
-   "roads": 4
+   "roads": 5,
+   "axis_deg": [
+    109.3,
+    20.9
+   ],
+   "half_width": 10.0,
+   "camera": false
   },
   {
-   "x": -5183.13,
-   "z": -2826.73,
+   "x": 3480.51,
+   "z": 3888.29,
    "source": "synthesized",
-   "roads": 3
+   "roads": 5,
+   "axis_deg": [
+    92.1,
+    3.6
+   ],
+   "half_width": 10.0,
+   "camera": false
+  },
+  {
+   "x": 5238.14,
+   "z": 2408.5,
+   "source": "synthesized",
+   "roads": 5,
+   "axis_deg": [
+    2.0,
+    118.1
+   ],
+   "half_width": 7.5,
+   "camera": false
+  },
+  {
+   "x": -6519.26,
+   "z": -3005.42,
+   "source": "synthesized",
+   "roads": 4,
+   "axis_deg": [
+    100.8,
+    159.8
+   ],
+   "half_width": 10.0,
+   "camera": false
+  },
+  {
+   "x": -6427.47,
+   "z": -2987.93,
+   "source": "synthesized",
+   "roads": 4,
+   "axis_deg": [
+    6.1,
+    96.6
+   ],
+   "half_width": 10.0,
+   "camera": false
+  },
+  {
+   "x": -6123.82,
+   "z": -4167.98,
+   "source": "synthesized",
+   "roads": 4,
+   "axis_deg": [
+    147.0,
+    178.0
+   ],
+   "half_width": 7.5,
+   "camera": false
+  },
+  {
+   "x": -6101.56,
+   "z": -3667.2,
+   "source": "synthesized",
+   "roads": 4,
+   "axis_deg": [
+    90.0,
+    177.8
+   ],
+   "half_width": 7.5,
+   "camera": false
+  },
+  {
+   "x": -6053.89,
+   "z": -4601.89,
+   "source": "synthesized",
+   "roads": 4,
+   "axis_deg": [
+    16.3,
+    91.6
+   ],
+   "half_width": 7.5,
+   "camera": false
+  },
+  {
+   "x": -6010.11,
+   "z": -3653.38,
+   "source": "synthesized",
+   "roads": 4,
+   "axis_deg": [
+    2.8,
+    98.6
+   ],
+   "half_width": 5.0,
+   "camera": false
+  },
+  {
+   "x": -5973.98,
+   "z": -4874.66,
+   "source": "synthesized",
+   "roads": 4,
+   "axis_deg": [
+    16.3,
+    105.3
+   ],
+   "half_width": 7.5,
+   "camera": false
+  },
+  {
+   "x": -5348.86,
+   "z": -2656.05,
+   "source": "synthesized",
+   "roads": 4,
+   "axis_deg": [
+    7.3,
+    97.4
+   ],
+   "half_width": 5.0,
+   "camera": false
   },
   {
    "x": -5300.12,
    "z": -3078.96,
    "source": "synthesized",
-   "roads": 4
-  },
-  {
-   "x": -2471.02,
-   "z": -2316.39,
-   "source": "synthesized",
-   "roads": 3
-  },
-  {
-   "x": -4022.99,
-   "z": -2585.77,
-   "source": "synthesized",
-   "roads": 3
-  },
-  {
-   "x": -4213.71,
-   "z": -2612.61,
-   "source": "synthesized",
-   "roads": 4
-  },
-  {
-   "x": -4036.01,
-   "z": -2487.62,
-   "source": "synthesized",
-   "roads": 4
-  },
-  {
-   "x": -4519.17,
-   "z": -2544.31,
-   "source": "synthesized",
-   "roads": 3
-  },
-  {
-   "x": -4526.51,
-   "z": -2550.3,
-   "source": "synthesized",
-   "roads": 3
-  },
-  {
-   "x": -4509.54,
-   "z": -2552.08,
-   "source": "synthesized",
-   "roads": 3
-  },
-  {
-   "x": -5867.95,
-   "z": -2902.36,
-   "source": "synthesized",
-   "roads": 3
-  },
-  {
-   "x": -4752.48,
-   "z": -2897.87,
-   "source": "synthesized",
-   "roads": 3
-  },
-  {
-   "x": -4482.95,
-   "z": -2861.05,
-   "source": "synthesized",
-   "roads": 4
-  },
-  {
-   "x": -4186.06,
-   "z": -2837.47,
-   "source": "synthesized",
-   "roads": 4
-  },
-  {
-   "x": -4468.04,
-   "z": -2975.9,
-   "source": "synthesized",
-   "roads": 3
-  },
-  {
-   "x": -3995.67,
-   "z": -2815.25,
-   "source": "synthesized",
-   "roads": 4
-  },
-  {
-   "x": -4193.59,
-   "z": -2769.45,
-   "source": "synthesized",
-   "roads": 4
-  },
-  {
-   "x": -4171.8,
-   "z": -2939.39,
-   "source": "synthesized",
-   "roads": 4
-  },
-  {
-   "x": -4007.02,
-   "z": -2746.94,
-   "source": "synthesized",
-   "roads": 3
-  },
-  {
-   "x": -3984.43,
-   "z": -2917.01,
-   "source": "synthesized",
-   "roads": 4
-  },
-  {
-   "x": -4738.71,
-   "z": -3008.41,
-   "source": "synthesized",
-   "roads": 4
-  },
-  {
-   "x": -4225.4,
-   "z": -2512.89,
-   "source": "synthesized",
-   "roads": 4
-  },
-  {
-   "x": 6102.32,
-   "z": 2465.57,
-   "source": "synthesized",
-   "roads": 4
-  },
-  {
-   "x": 5176.2,
-   "z": 2383.47,
-   "source": "synthesized",
-   "roads": 3
-  },
-  {
-   "x": 3653.72,
-   "z": 4131.42,
-   "source": "synthesized",
-   "roads": 3
-  },
-  {
-   "x": -4669.98,
-   "z": -2569.29,
-   "source": "synthesized",
-   "roads": 3
+   "roads": 4,
+   "axis_deg": [
+    97.5,
+    6.7
+   ],
+   "half_width": 5.0,
+   "camera": false
   },
   {
    "x": -5064.54,
    "z": -2618.01,
    "source": "synthesized",
-   "roads": 4
+   "roads": 4,
+   "axis_deg": [
+    7.5,
+    97.6
+   ],
+   "half_width": 5.0,
+   "camera": false
   },
   {
-   "x": -4634.72,
-   "z": -2563.15,
+   "x": -5009.54,
+   "z": -3040.52,
    "source": "synthesized",
-   "roads": 3
+   "roads": 4,
+   "axis_deg": [
+    7.9,
+    97.5
+   ],
+   "half_width": 5.0,
+   "camera": false
   },
   {
-   "x": -4627.76,
-   "z": -2561.85,
+   "x": -4785.15,
+   "z": -2582.36,
    "source": "synthesized",
-   "roads": 3
+   "roads": 4,
+   "axis_deg": [
+    5.3,
+    96.6
+   ],
+   "half_width": 7.5,
+   "camera": true
   },
   {
-   "x": -5041.13,
-   "z": -2789.75,
+   "x": -4775.87,
+   "z": -2680.64,
    "source": "synthesized",
-   "roads": 3
+   "roads": 4,
+   "axis_deg": [
+    4.7,
+    96.5
+   ],
+   "half_width": 7.5,
+   "camera": false
   },
   {
-   "x": -4518.78,
-   "z": -2561.94,
+   "x": -4738.71,
+   "z": -3008.41,
    "source": "synthesized",
-   "roads": 3
+   "roads": 4,
+   "axis_deg": [
+    7.1,
+    97.2
+   ],
+   "half_width": 7.5,
+   "camera": false
   },
   {
-   "x": 1686.07,
-   "z": 4456.67,
+   "x": -4509.86,
+   "z": -2650.35,
    "source": "synthesized",
-   "roads": 4
+   "roads": 4,
+   "axis_deg": [
+    5.8,
+    96.5
+   ],
+   "half_width": 5.0,
+   "camera": false
   },
   {
-   "x": -810.85,
-   "z": 3039.01,
+   "x": -4498.92,
+   "z": -2721.21,
    "source": "synthesized",
-   "roads": 3
+   "roads": 4,
+   "axis_deg": [
+    8.6,
+    96.7
+   ],
+   "half_width": 10.0,
+   "camera": false
   },
   {
-   "x": -855.69,
-   "z": 2641.96,
+   "x": -4482.95,
+   "z": -2861.05,
    "source": "synthesized",
-   "roads": 3
+   "roads": 4,
+   "axis_deg": [
+    5.1,
+    94.5
+   ],
+   "half_width": 5.0,
+   "camera": false
   },
   {
-   "x": -5005.19,
-   "z": -2802.44,
+   "x": -4225.4,
+   "z": -2512.89,
    "source": "synthesized",
-   "roads": 3
+   "roads": 4,
+   "axis_deg": [
+    5.6,
+    97.1
+   ],
+   "half_width": 7.5,
+   "camera": false
   },
   {
-   "x": -5692.52,
-   "z": -2877.83,
+   "x": -4213.71,
+   "z": -2612.61,
    "source": "synthesized",
-   "roads": 3
+   "roads": 4,
+   "axis_deg": [
+    6.7,
+    97.3
+   ],
+   "half_width": 7.5,
+   "camera": false
   },
   {
-   "x": -6397.59,
-   "z": -2970.47,
+   "x": -4193.59,
+   "z": -2769.45,
    "source": "synthesized",
-   "roads": 3
+   "roads": 4,
+   "axis_deg": [
+    4.8,
+    96.9
+   ],
+   "half_width": 7.5,
+   "camera": true
+  },
+  {
+   "x": -4186.06,
+   "z": -2837.47,
+   "source": "synthesized",
+   "roads": 4,
+   "axis_deg": [
+    6.3,
+    96.7
+   ],
+   "half_width": 7.5,
+   "camera": false
+  },
+  {
+   "x": -4171.8,
+   "z": -2939.39,
+   "source": "synthesized",
+   "roads": 4,
+   "axis_deg": [
+    6.7,
+    97.0
+   ],
+   "half_width": 7.5,
+   "camera": false
+  },
+  {
+   "x": -4036.01,
+   "z": -2487.62,
+   "source": "synthesized",
+   "roads": 4,
+   "axis_deg": [
+    7.4,
+    97.6
+   ],
+   "half_width": 5.0,
+   "camera": false
+  },
+  {
+   "x": -3995.67,
+   "z": -2815.25,
+   "source": "synthesized",
+   "roads": 4,
+   "axis_deg": [
+    6.3,
+    96.7
+   ],
+   "half_width": 5.0,
+   "camera": false
+  },
+  {
+   "x": -3984.43,
+   "z": -2917.01,
+   "source": "synthesized",
+   "roads": 4,
+   "axis_deg": [
+    6.3,
+    96.2
+   ],
+   "half_width": 5.0,
+   "camera": false
+  },
+  {
+   "x": -3812.04,
+   "z": -2723.42,
+   "source": "synthesized",
+   "roads": 4,
+   "axis_deg": [
+    96.9,
+    13.8
+   ],
+   "half_width": 5.0,
+   "camera": false
+  },
+  {
+   "x": -3797.25,
+   "z": -2778.44,
+   "source": "synthesized",
+   "roads": 4,
+   "axis_deg": [
+    15.0,
+    102.9
+   ],
+   "half_width": 5.0,
+   "camera": false
+  },
+  {
+   "x": -3764.99,
+   "z": -2893.33,
+   "source": "synthesized",
+   "roads": 4,
+   "axis_deg": [
+    13.8,
+    96.2
+   ],
+   "half_width": 5.0,
+   "camera": false
+  },
+  {
+   "x": -3731.08,
+   "z": -2763.27,
+   "source": "synthesized",
+   "roads": 4,
+   "axis_deg": [
+    14.2,
+    102.9
+   ],
+   "half_width": 7.5,
+   "camera": false
+  },
+  {
+   "x": -1530.02,
+   "z": 954.36,
+   "source": "synthesized",
+   "roads": 4,
+   "axis_deg": [
+    99.7,
+    176.8
+   ],
+   "half_width": 5.0,
+   "camera": false
+  },
+  {
+   "x": -1516.7,
+   "z": 276.81,
+   "source": "synthesized",
+   "roads": 4,
+   "axis_deg": [
+    81.1,
+    175.7
+   ],
+   "half_width": 7.5,
+   "camera": false
+  },
+  {
+   "x": -1504.75,
+   "z": -491.67,
+   "source": "synthesized",
+   "roads": 4,
+   "axis_deg": [
+    92.1,
+    3.6
+   ],
+   "half_width": 7.5,
+   "camera": false
+  },
+  {
+   "x": -1499.73,
+   "z": 549.6,
+   "source": "synthesized",
+   "roads": 4,
+   "axis_deg": [
+    80.4,
+    174.2
+   ],
+   "half_width": 10.0,
+   "camera": false
+  },
+  {
+   "x": -1479.65,
+   "z": 793.07,
+   "source": "synthesized",
+   "roads": 4,
+   "axis_deg": [
+    100.2,
+    174.6
+   ],
+   "half_width": 7.5,
+   "camera": true
+  },
+  {
+   "x": -1363.84,
+   "z": 1375.4,
+   "source": "synthesized",
+   "roads": 4,
+   "axis_deg": [
+    64.8,
+    157.6
+   ],
+   "half_width": 7.5,
+   "camera": false
+  },
+  {
+   "x": -1256.04,
+   "z": 1007.55,
+   "source": "synthesized",
+   "roads": 4,
+   "axis_deg": [
+    97.5,
+    7.5
+   ],
+   "half_width": 7.5,
+   "camera": false
+  },
+  {
+   "x": -982.08,
+   "z": 2314.56,
+   "source": "synthesized",
+   "roads": 4,
+   "axis_deg": [
+    65.8,
+    156.3
+   ],
+   "half_width": 7.5,
+   "camera": false
+  },
+  {
+   "x": -964.31,
+   "z": 1816.66,
+   "source": "synthesized",
+   "roads": 4,
+   "axis_deg": [
+    111.9,
+    19.5
+   ],
+   "half_width": 7.5,
+   "camera": false
+  },
+  {
+   "x": -746.28,
+   "z": 2792.9,
+   "source": "synthesized",
+   "roads": 4,
+   "axis_deg": [
+    142.8,
+    26.3
+   ],
+   "half_width": 7.5,
+   "camera": false
+  },
+  {
+   "x": 140.26,
+   "z": 4098.13,
+   "source": "synthesized",
+   "roads": 4,
+   "axis_deg": [
+    90.3,
+    179.8
+   ],
+   "half_width": 7.5,
+   "camera": false
+  },
+  {
+   "x": 448.94,
+   "z": 4038.32,
+   "source": "synthesized",
+   "roads": 4,
+   "axis_deg": [
+    53.2,
+    134.1
+   ],
+   "half_width": 5.0,
+   "camera": false
   },
   {
    "x": 701.74,
    "z": 4407.06,
    "source": "synthesized",
-   "roads": 4
+   "roads": 4,
+   "axis_deg": [
+    56.7,
+    147.1
+   ],
+   "half_width": 7.5,
+   "camera": false
   },
   {
-   "x": 5032.02,
-   "z": 2388.0,
+   "x": 1071.5,
+   "z": 4939.63,
    "source": "synthesized",
-   "roads": 3
+   "roads": 4,
+   "axis_deg": [
+    51.6,
+    143.2
+   ],
+   "half_width": 5.0,
+   "camera": false
   },
   {
-   "x": -3010.22,
-   "z": -2554.53,
+   "x": 1264.81,
+   "z": 4787.7,
    "source": "synthesized",
-   "roads": 3
+   "roads": 4,
+   "axis_deg": [
+    50.6,
+    163.0
+   ],
+   "half_width": 10.0,
+   "camera": true
   },
   {
-   "x": -4626.12,
-   "z": -2567.77,
+   "x": 1307.97,
+   "z": 4753.63,
    "source": "synthesized",
-   "roads": 3
+   "roads": 4,
+   "axis_deg": [
+    50.1,
+    163.2
+   ],
+   "half_width": 10.0,
+   "camera": false
   },
   {
-   "x": -4525.6,
-   "z": -2558.01,
+   "x": 1686.07,
+   "z": 4456.67,
    "source": "synthesized",
-   "roads": 3
+   "roads": 4,
+   "axis_deg": [
+    51.4,
+    150.4
+   ],
+   "half_width": 5.0,
+   "camera": true
   },
   {
-   "x": -4634.99,
-   "z": -2568.41,
+   "x": 2471.84,
+   "z": 3865.55,
    "source": "synthesized",
-   "roads": 3
+   "roads": 4,
+   "axis_deg": [
+    17.7,
+    92.0
+   ],
+   "half_width": 10.0,
+   "camera": false
   },
   {
-   "x": 5182.63,
-   "z": 2368.72,
+   "x": 4177.99,
+   "z": 3993.93,
    "source": "synthesized",
-   "roads": 3
+   "roads": 4,
+   "axis_deg": [
+    8.2,
+    102.8
+   ],
+   "half_width": 7.5,
+   "camera": false
   },
   {
-   "x": 5015.05,
-   "z": 2382.83,
+   "x": 4178.46,
+   "z": 3908.63,
    "source": "synthesized",
-   "roads": 3
+   "roads": 4,
+   "axis_deg": [
+    90.5,
+    0.7
+   ],
+   "half_width": 10.0,
+   "camera": true
   },
   {
-   "x": 5161.29,
-   "z": 2377.91,
+   "x": 4544.55,
+   "z": 3870.81,
    "source": "synthesized",
-   "roads": 3
+   "roads": 4,
+   "axis_deg": [
+    37.1,
+    140.4
+   ],
+   "half_width": 5.0,
+   "camera": false
   },
   {
-   "x": 5456.45,
-   "z": 2361.6,
+   "x": 5162.75,
+   "z": 3318.87,
    "source": "synthesized",
-   "roads": 3
+   "roads": 4,
+   "axis_deg": [
+    12.6,
+    81.1
+   ],
+   "half_width": 10.0,
+   "camera": false
+  },
+  {
+   "x": 5176.05,
+   "z": 3261.92,
+   "source": "synthesized",
+   "roads": 4,
+   "axis_deg": [
+    6.9,
+    132.2
+   ],
+   "half_width": 7.5,
+   "camera": false
+  },
+  {
+   "x": 6102.32,
+   "z": 2465.57,
+   "source": "synthesized",
+   "roads": 4,
+   "axis_deg": [
+    93.7,
+    144.0
+   ],
+   "half_width": 10.0,
+   "camera": false
+  },
+  {
+   "x": -4764.14,
+   "z": -2800.42,
+   "source": "osm",
+   "roads": 0,
+   "axis_deg": [
+    4.7,
+    92.9
+   ],
+   "half_width": 10.0,
+   "camera": true
+  },
+  {
+   "x": -4482.87,
+   "z": -2977.67,
+   "source": "osm",
+   "roads": 0,
+   "axis_deg": [
+    96.8,
+    7.4
+   ],
+   "half_width": 5.0,
+   "camera": false
+  },
+  {
+   "x": -3699.95,
+   "z": -2886.37,
+   "source": "osm",
+   "roads": 0,
+   "axis_deg": [
+    14.2,
+    104.6
+   ],
+   "half_width": 7.5,
+   "camera": false
+  },
+  {
+   "x": -3286.08,
+   "z": -2705.28,
+   "source": "osm",
+   "roads": 0,
+   "axis_deg": [
+    8.2,
+    97.2
+   ],
+   "half_width": 3.5,
+   "camera": false
+  },
+  {
+   "x": -3147.74,
+   "z": -2687.79,
+   "source": "osm",
+   "roads": 0,
+   "axis_deg": [
+    29.5,
+    97.2
+   ],
+   "half_width": 5.0,
+   "camera": true
+  },
+  {
+   "x": -3103.39,
+   "z": -2766.23,
+   "source": "osm",
+   "roads": 0,
+   "axis_deg": [
+    28.0,
+    119.2
+   ],
+   "half_width": 5.0,
+   "camera": false
+  },
+  {
+   "x": -1492.9,
+   "z": -1861.19,
+   "source": "osm",
+   "roads": 0,
+   "axis_deg": [
+    168.2,
+    120.1
+   ],
+   "half_width": 10.0,
+   "camera": false
+  },
+  {
+   "x": -1460.58,
+   "z": 969.19,
+   "source": "osm",
+   "roads": 0,
+   "axis_deg": [
+    100.6,
+    175.3
+   ],
+   "half_width": 7.5,
+   "camera": false
+  },
+  {
+   "x": 2165.98,
+   "z": 3915.37,
+   "source": "osm",
+   "roads": 0,
+   "axis_deg": [
+    27.9,
+    102.0
+   ],
+   "half_width": 10.0,
+   "camera": false
+  },
+  {
+   "x": 2198.01,
+   "z": 3856.73,
+   "source": "osm",
+   "roads": 0,
+   "axis_deg": [
+    29.8,
+    90.1
+   ],
+   "half_width": 10.0,
+   "camera": true
+  },
+  {
+   "x": 2443.59,
+   "z": 3954.21,
+   "source": "osm",
+   "roads": 0,
+   "axis_deg": [
+    13.2,
+    98.2
+   ],
+   "half_width": 7.5,
+   "camera": false
+  },
+  {
+   "x": 5237.66,
+   "z": 2366.35,
+   "source": "osm",
+   "roads": 0,
+   "axis_deg": [
+    85.7,
+    178.7
+   ],
+   "half_width": 10.0,
+   "camera": false
+  },
+  {
+   "x": 5437.95,
+   "z": 2351.36,
+   "source": "osm",
+   "roads": 0,
+   "axis_deg": [
+    85.4,
+    176.9
+   ],
+   "half_width": 10.0,
+   "camera": false
+  },
+  {
+   "x": 5594.82,
+   "z": 2338.72,
+   "source": "osm",
+   "roads": 0,
+   "axis_deg": [
+    85.4,
+    179.7
+   ],
+   "half_width": 10.0,
+   "camera": false
+  },
+  {
+   "x": 5803.41,
+   "z": 2387.07,
+   "source": "osm",
+   "roads": 0,
+   "axis_deg": [
+    14.1,
+    105.3
+   ],
+   "half_width": 10.0,
+   "camera": true
   }
  ],
  "chunks": [
