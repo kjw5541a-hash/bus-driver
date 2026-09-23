@@ -45,6 +45,17 @@ func _ready() -> void:
 			"카메라가 버스 뒤 10-30 m 밖이다 (%.1f m)" % behind)
 		ok(offset.y > 2.0, "카메라가 버스보다 높지 않다 (%.1f m)" % offset.y)
 
+		# 시점 조작이 한계를 넘으면 카메라가 버스 안으로 들어가거나 뒤집힌다.
+		var arm := drive.camera.find_children("*", "SpringArm3D", true, false)[0] as SpringArm3D
+		drive.camera.apply_orbit(0.0, -900.0, -900.0)
+		equal_approx(arm.spring_length, ChaseCamera.DISTANCE_MIN, 0.01, "줌 하한을 넘었다")
+		equal_approx(arm.rotation_degrees.x, ChaseCamera.PITCH_MIN_DEG, 0.01, "피치 하한을 넘었다")
+		drive.camera.apply_orbit(0.0, 900.0, 900.0)
+		equal_approx(arm.spring_length, ChaseCamera.DISTANCE_MAX, 0.01, "줌 상한을 넘었다")
+		equal_approx(arm.rotation_degrees.x, ChaseCamera.PITCH_MAX_DEG, 0.01, "피치 상한을 넘었다")
+		drive.camera.reset_view()
+		equal_approx(arm.spring_length, ChaseCamera.ARM_LENGTH, 0.01, "시점 복귀가 안 됐다")
+
 	if drive.data == null or drive.bus == null:
 		done = true
 		finish()
