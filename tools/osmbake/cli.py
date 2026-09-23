@@ -132,6 +132,11 @@ def bake(route_id: str, *, cache_dir: Path = CACHE_DIR, out_dir: Path = OUT_DIR,
         chunks.setdefault(name, {})["road"] = builder
     for name, builder in building_chunks.items():
         chunks.setdefault(name, {})["building"] = builder
+    extra = dict(mesh_mod.build_markings(roads, projector))
+    extra["sidewalk"] = mesh_mod.build_sidewalks(roads, projector)
+    for surface, builder in extra.items():
+        for name, part in mesh_mod.split_chunks(builder).items():
+            chunks.setdefault(name, {})[surface] = part
 
     # 6. emit
     write_glb(out_dir / f"route_{route_id}.glb", chunks)

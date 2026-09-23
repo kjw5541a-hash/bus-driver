@@ -17,6 +17,16 @@ UNSIGNED_INT = 5125
 ARRAY_BUFFER = 34962
 ELEMENT_ARRAY_BUFFER = 34963
 
+# surface 이름과 머티리얼 목록의 순서가 같아야 한다.
+MATERIALS = [
+    ("road", [0.22, 0.22, 0.24, 1.0], 0.95),
+    ("building", [0.72, 0.68, 0.62, 1.0], 0.85),
+    ("marking_center", [0.85, 0.70, 0.12, 1.0], 0.7),
+    ("marking_lane", [0.92, 0.92, 0.90, 1.0], 0.7),
+    ("sidewalk", [0.58, 0.57, 0.55, 1.0], 0.9),
+]
+MATERIAL_INDEX = {name: index for index, (name, _c, _r) in enumerate(MATERIALS)}
+
 
 def _pad4(buffer: bytearray, filler: bytes = b"\x00") -> None:
     while len(buffer) % 4:
@@ -70,7 +80,7 @@ def write_glb(path: Path, chunks: dict[str, dict[str, MeshBuilder]]) -> None:
                     "NORMAL": add_vec3(builder.normals),
                 },
                 "indices": add_indices(builder.indices),
-                "material": 0 if surface_name == "road" else 1,
+                "material": MATERIAL_INDEX[surface_name],
             })
         if not primitives:
             continue
@@ -94,14 +104,11 @@ def write_glb(path: Path, chunks: dict[str, dict[str, MeshBuilder]]) -> None:
         "bufferViews": buffer_views,
         "buffers": [{"byteLength": len(binary)}],
         "materials": [
-            {"name": "road",
-             "pbrMetallicRoughness": {"baseColorFactor": [0.22, 0.22, 0.24, 1.0],
+            {"name": name,
+             "pbrMetallicRoughness": {"baseColorFactor": color,
                                       "metallicFactor": 0.0,
-                                      "roughnessFactor": 0.95}},
-            {"name": "building",
-             "pbrMetallicRoughness": {"baseColorFactor": [0.72, 0.68, 0.62, 1.0],
-                                      "metallicFactor": 0.0,
-                                      "roughnessFactor": 0.85}},
+                                      "roughnessFactor": roughness}}
+            for name, color, roughness in MATERIALS
         ],
     }
 
