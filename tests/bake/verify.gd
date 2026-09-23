@@ -78,6 +78,17 @@ func _ready() -> void:
 	bus.look_at_from_position(bus.position, route[1] + Vector3.UP * 1.5, Vector3.UP)
 	add_child(bus)
 
+	# 창을 띄워 실행할 때만. 검증 자체는 헤드리스라 카메라도 조명도 필요 없다.
+	if DisplayServer.get_name() != "headless":
+		var light := DirectionalLight3D.new()
+		light.rotation_degrees = Vector3(-50, -30, 0)
+		add_child(light)
+		var camera := Camera3D.new()
+		camera.position = Vector3(0, 6, 14)   # 버스 뒤 위쪽
+		camera.rotation_degrees = Vector3(-15, 0, 0)
+		camera.far = 2000.0
+		bus.add_child(camera)
+
 func _route_id_from_args() -> String:
 	for argument in OS.get_cmdline_user_args():
 		if argument.begins_with("--route="):
