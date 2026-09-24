@@ -159,4 +159,17 @@ func _report() -> void:
 	# 승객에 충돌면이 붙으면 버스가 사람을 들이받고 주행이 막힌다.
 	ok(drive.stop_field.find_children("*", "StaticBody3D", true, false).is_empty(),
 		"정류장에 충돌면이 붙었다")
+
+	# 구간·시계·결과 화면 배선.
+	ok(drive.data.section == 0, "구간 0 으로 뜨지 않았다 (%d)" % drive.data.section)
+	ok(drive.data.section_count > 1, "노선이 구간으로 안 잘렸다")
+	ok(drive.clock != null and drive.clock.deadline_s > 0.0, "RunClock 마감이 없다")
+	ok(drive.clock != null and drive.clock.elapsed_s > 0.0, "시계가 안 돈다")
+	ok(drive.clock_hud != null, "ClockHud 가 없다")
+	ok(drive.result != null and not drive.result.visible, "결과 화면이 처음부터 떠 있다")
+	if drive.result != null:
+		drive.result.show_result(ScoreCard.tally(100.0, 600.0, 3, 1, 0, 0, 0, 0),
+			"테스트", true)
+		ok(drive.result.visible and drive.result.line_count == 4,
+			"결과 화면 줄이 %d 개다" % drive.result.line_count)
 	finish()
