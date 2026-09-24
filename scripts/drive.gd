@@ -97,6 +97,14 @@ func _physics_process(delta: float) -> void:
 		return
 	input.poll(bus.linear_velocity.length())
 	bus.apply_axes(input.steer, input.throttle, input.brake, input.reverse, delta)
+
+	var view_asked := input.take_view_toggle()
+	if touch != null and touch.view_toggle_requested:
+		touch.view_toggle_requested = false
+		view_asked = true
+	if view_asked and camera != null:
+		camera.toggle_view()
+
 	var respawn_asked := input.take_respawn()
 	if touch != null and touch.respawn_requested:
 		touch.respawn_requested = false

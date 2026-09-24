@@ -22,6 +22,7 @@ var touch_brake := false
 var touch_reverse_toggle := false
 
 var _respawn_pressed := false
+var _view_pressed := false
 # 조향을 맡은 손가락. -1 이면 아무도 안 잡고 있다.
 var _steer_touch := -1
 var _touch_origin_x := 0.0
@@ -62,6 +63,14 @@ func poll(speed: float) -> void:
 
 	if Input.is_action_just_pressed("bus_respawn"):
 		_respawn_pressed = true
+	if Input.is_action_just_pressed("bus_view_toggle"):
+		_view_pressed = true
+
+func take_view_toggle() -> bool:
+	"""시점 전환 요청을 꺼내간다. 한 번 꺼내면 지워진다."""
+	var pressed := _view_pressed
+	_view_pressed = false
+	return pressed
 
 func take_respawn() -> bool:
 	"""리스폰 요청을 꺼내간다. 한 번 꺼내면 지워진다."""

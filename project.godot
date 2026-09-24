@@ -28,6 +28,10 @@ bus_steer_right={
 "deadzone": 0.2,
 "events": [Object(InputEventKey,"physical_keycode":68)]
 }
+bus_view_toggle={
+"deadzone": 0.2,
+"events": [Object(InputEventKey,"physical_keycode":67)]
+}
 bus_respawn={
 "deadzone": 0.2,
 "events": [Object(InputEventKey,"physical_keycode":82)]
