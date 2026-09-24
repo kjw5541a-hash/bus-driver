@@ -145,6 +145,7 @@ def bake(route_id: str, *, cache_dir: Path = CACHE_DIR, out_dir: Path = OUT_DIR,
                     and e.get("tags", {}).get("highway") == "traffic_signals"]
     signals = corridor_mod.signal_candidates(graph, signal_nodes, projector,
                                              route_xz, radius_m)
+    corridor_mod.place_poles(signals, roads, projector)
 
     # 5. mesh
     road_chunks = mesh_mod.split_chunks(mesh_mod.build_roads(roads, projector))

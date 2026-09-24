@@ -882,7 +882,19 @@
     138.6
    ],
    "half_width": 10.0,
-   "camera": false
+   "camera": false,
+   "pole_lateral": [
+    20.25,
+    28.25,
+    31.25,
+    11.25
+   ],
+   "pole_back": [
+    28.0,
+    21.0,
+    19.0,
+    26.0
+   ]
   },
   {
    "x": 89.03,
@@ -894,7 +906,19 @@
     89.5
    ],
    "half_width": 5.0,
-   "camera": false
+   "camera": false,
+   "pole_lateral": [
+    6.25,
+    6.25,
+    6.25,
+    6.25
+   ],
+   "pole_back": [
+    7.0,
+    7.0,
+    7.0,
+    7.0
+   ]
   },
   {
    "x": 618.14,
@@ -906,7 +930,19 @@
     85.4
    ],
    "half_width": 10.0,
-   "camera": true
+   "camera": true,
+   "pole_lateral": [
+    13.25,
+    11.25,
+    11.25,
+    27.25
+   ],
+   "pole_back": [
+    27.0,
+    12.0,
+    12.0,
+    14.0
+   ]
   },
   {
    "x": -369.89,
@@ -918,7 +954,19 @@
     146.3
    ],
    "half_width": 7.5,
-   "camera": false
+   "camera": false,
+   "pole_lateral": [
+    8.75,
+    8.75,
+    8.75,
+    14.75
+   ],
+   "pole_back": [
+    13.5,
+    19.5,
+    9.5,
+    9.5
+   ]
   },
   {
    "x": -329.39,
@@ -930,7 +978,19 @@
     146.8
    ],
    "half_width": 7.5,
-   "camera": false
+   "camera": false,
+   "pole_lateral": [
+    16.75,
+    8.75,
+    8.75,
+    10.75
+   ],
+   "pole_back": [
+    9.5,
+    21.5,
+    9.5,
+    13.5
+   ]
   },
   {
    "x": -149.3,
@@ -942,7 +1002,19 @@
     27.4
    ],
    "half_width": 10.0,
-   "camera": true
+   "camera": true,
+   "pole_lateral": [
+    11.25,
+    11.25,
+    11.25,
+    11.25
+   ],
+   "pole_back": [
+    12.0,
+    12.0,
+    12.0,
+    13.0
+   ]
   },
   {
    "x": -44.33,
@@ -954,7 +1026,19 @@
     12.8
    ],
    "half_width": 7.5,
-   "camera": true
+   "camera": true,
+   "pole_lateral": [
+    8.75,
+    8.75,
+    16.75,
+    8.75
+   ],
+   "pole_back": [
+    9.5,
+    15.5,
+    9.5,
+    19.5
+   ]
   },
   {
    "x": 20.31,
@@ -966,7 +1050,19 @@
     50.6
    ],
    "half_width": 7.5,
-   "camera": false
+   "camera": false,
+   "pole_lateral": [
+    16.75,
+    8.75,
+    15.75,
+    23.75
+   ],
+   "pole_back": [
+    9.5,
+    9.5,
+    22.5,
+    9.5
+   ]
   },
   {
    "x": 20.44,
@@ -978,7 +1074,19 @@
     61.8
    ],
    "half_width": 7.5,
-   "camera": false
+   "camera": false,
+   "pole_lateral": [
+    19.75,
+    8.75,
+    8.75,
+    8.75
+   ],
+   "pole_back": [
+    20.5,
+    9.5,
+    14.5,
+    24.5
+   ]
   },
   {
    "x": 32.9,
@@ -990,7 +1098,19 @@
     173.2
    ],
    "half_width": 10.0,
-   "camera": false
+   "camera": false,
+   "pole_lateral": [
+    11.25,
+    12.25,
+    11.25,
+    12.25
+   ],
+   "pole_back": [
+    12.0,
+    12.0,
+    36.0,
+    19.0
+   ]
   },
   {
    "x": 77.85,
@@ -1002,7 +1122,19 @@
     169.6
    ],
    "half_width": 7.5,
-   "camera": false
+   "camera": false,
+   "pole_lateral": [
+    10.75,
+    8.75,
+    8.75,
+    8.75
+   ],
+   "pole_back": [
+    11.5,
+    9.5,
+    9.5,
+    9.5
+   ]
   },
   {
    "x": 86.32,
@@ -1014,7 +1146,19 @@
     177.3
    ],
    "half_width": 5.0,
-   "camera": false
+   "camera": false,
+   "pole_lateral": [
+    20.25,
+    21.25,
+    6.25,
+    8.25
+   ],
+   "pole_back": [
+    7.0,
+    7.0,
+    22.0,
+    21.0
+   ]
   },
   {
    "x": 372.84,
@@ -1026,7 +1170,19 @@
     148.3
    ],
    "half_width": 10.0,
-   "camera": false
+   "camera": false,
+   "pole_lateral": [
+    34.25,
+    18.25,
+    11.25,
+    12.25
+   ],
+   "pole_back": [
+    12.0,
+    12.0,
+    12.0,
+    27.0
+   ]
   },
   {
    "x": -575.42,
@@ -1038,7 +1194,19 @@
     126.3
    ],
    "half_width": 7.5,
-   "camera": false
+   "camera": false,
+   "pole_lateral": [
+    8.75,
+    9.75,
+    8.75,
+    8.75
+   ],
+   "pole_back": [
+    9.5,
+    14.5,
+    9.5,
+    10.5
+   ]
   },
   {
    "x": -534.73,
@@ -1050,7 +1218,19 @@
     122.2
    ],
    "half_width": 3.5,
-   "camera": false
+   "camera": false,
+   "pole_lateral": [
+    4.75,
+    10.75,
+    8.75,
+    19.75
+   ],
+   "pole_back": [
+    11.5,
+    20.5,
+    6.5,
+    13.5
+   ]
   },
   {
    "x": 60.1,
@@ -1062,7 +1242,19 @@
     173.2
    ],
    "half_width": 10.0,
-   "camera": false
+   "camera": false,
+   "pole_lateral": [
+    11.25,
+    11.25,
+    19.25,
+    12.25
+   ],
+   "pole_back": [
+    12.0,
+    12.0,
+    16.0,
+    12.0
+   ]
   },
   {
    "x": 88.72,
@@ -1074,7 +1266,19 @@
     90.0
    ],
    "half_width": 7.5,
-   "camera": false
+   "camera": false,
+   "pole_lateral": [
+    8.75,
+    8.75,
+    8.75,
+    8.75
+   ],
+   "pole_back": [
+    9.5,
+    9.5,
+    9.5,
+    9.5
+   ]
   },
   {
    "x": 166.41,
@@ -1086,7 +1290,19 @@
     178.1
    ],
    "half_width": 10.0,
-   "camera": false
+   "camera": false,
+   "pole_lateral": [
+    11.25,
+    32.25,
+    11.25,
+    11.25
+   ],
+   "pole_back": [
+    12.0,
+    12.0,
+    32.0,
+    12.0
+   ]
   },
   {
    "x": 395.97,
@@ -1098,7 +1314,19 @@
     89.6
    ],
    "half_width": 7.5,
-   "camera": false
+   "camera": false,
+   "pole_lateral": [
+    8.75,
+    8.75,
+    8.75,
+    8.75
+   ],
+   "pole_back": [
+    9.5,
+    9.5,
+    9.5,
+    9.5
+   ]
   },
   {
    "x": 601.27,
@@ -1110,7 +1338,19 @@
     177.0
    ],
    "half_width": 7.5,
-   "camera": false
+   "camera": false,
+   "pole_lateral": [
+    8.75,
+    12.75,
+    14.75,
+    16.75
+   ],
+   "pole_back": [
+    9.5,
+    12.5,
+    9.5,
+    9.5
+   ]
   }
  ],
  "chunks": [
