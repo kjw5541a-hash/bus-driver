@@ -15,6 +15,8 @@ var route: PackedVector3Array = []
 var stops: Array = []
 var chunks: Array = []
 var signals: Array = []
+# 정차 목표점. stops 와 같은 순서다. 자세한 이유는 point_at_progress 를 보라.
+var stop_targets: PackedVector3Array = []
 
 static func load_route(route_id: String) -> RouteData:
 	var raw := FileAccess.get_file_as_string("res://assets/routes/route_%s.json" % route_id)
@@ -39,6 +41,7 @@ static func load_route(route_id: String) -> RouteData:
 	# 구 버전 산출물에는 signals 가 없거나 axis_deg 가 빠져 있다. 비어 있으면
 	# 신호 관련 노드가 조용히 아무것도 안 하도록 그대로 넘긴다.
 	data.signals = parsed.get("signals", [])
+	data._build_stop_targets()
 	return data
 
 static func list_route_ids() -> PackedStringArray:
@@ -63,3 +66,29 @@ func nearest_index(point: Vector3) -> int:
 			best_distance = distance
 			best = i
 	return best
+
+func point_at_progress(distance_m: float) -> Vector3:
+	"""노선 시작점에서 distance_m 만큼 간 지점.
+
+	정류장 좌표(x, z)는 OSM bus_stop 노드, 곧 도로 옆 인도다. 버스가 차선에
+	제대로 서도 중앙값 6.9 m, 최대 28.6 m 떨어져 있어 그대로 쓰면 피할 수
+	없는 페널티가 된다. 정차 목표점은 이 함수가 내는 노선 위의 점이다.
+	"""
+	if route.size() == 0:
+		return Vector3.ZERO
+	if route.size() == 1 or distance_m <= 0.0:
+		return route[0]
+	var remaining := distance_m
+	for index in range(1, route.size()):
+		var span := route[index - 1].distance_to(route[index])
+		if remaining <= span:
+			var ratio := remaining / maxf(span, 0.001)
+			return route[index - 1].lerp(route[index], ratio)
+		remaining -= span
+	# progress_m 이 노선 길이를 넘었다. 종점으로 자른다.
+	return route[route.size() - 1]
+
+func _build_stop_targets() -> void:
+	stop_targets = PackedVector3Array()
+	for stop in stops:
+		stop_targets.append(point_at_progress(float(stop.get("progress_m", 0.0))))

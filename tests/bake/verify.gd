@@ -20,6 +20,9 @@ const ARRIVE_RADIUS := 25.0     # 웨이포인트 도달 판정
 const STUCK_LIMIT := 3.0        # 초. 이보다 오래 멈춰 있으면 주행을 끝낸다
 const GROUND_COVERAGE_MIN := 0.98
 const STOP_NAME_COVERAGE_MIN := 0.95
+# 교차로는 인도를 비우고, 폭 6 m 미만 골목은 인도가 없어 100% 는 안 된다.
+# 실측 72~81%. 중심선에 그대로 두던 때는 7~15% 였다.
+const STOP_ON_SIDEWALK_MIN := 0.65
 const STOP_GAP_MIN := 15.0      # m. 이보다 붙어 있으면 같은 자리에 중복 스냅된 것
 const SAMPLE_STEP := 2.0        # m. 지면 연속성 표본 간격
 const DRIVE_MIN_M := 100.0      # m. 이만큼은 실제로 굴러가야 한다
@@ -72,6 +75,7 @@ func _ready() -> void:
 	_check_ground_coverage()
 	_check_stop_names()
 	_check_stop_order()
+	_check_stops_on_sidewalk()
 
 	bus = _make_bus()
 	bus.position = route[0] + Vector3.UP * 1.5
@@ -186,6 +190,26 @@ func _check_stop_order() -> void:
 	print("정류장 최소 간격 %.1fm (%s)" % [closest, closest_pair])
 	if closest < STOP_GAP_MIN:
 		failures.append("정류장 간격 %.1fm < %.0fm: %s" % [closest, STOP_GAP_MIN, closest_pair])
+
+func _check_stops_on_sidewalk() -> void:
+	# 정류장은 차도가 아니라 인도 위에 있어야 한다. 인도 윗면은 연석 높이
+	# 0.15 m, 차도는 0 이라 맞은 높이로 가른다. 인도가 없는 골목도 있어서
+	# 전부는 요구하지 않는다.
+	var stops: Array = meta["stops"]
+	if stops.is_empty():
+		return
+	var space := get_world_3d().direct_space_state
+	var on_curb := 0
+	for stop in stops:
+		var origin := Vector3(float(stop["x"]), 30.0, float(stop["z"]))
+		var query := PhysicsRayQueryParameters3D.create(origin, origin + Vector3.DOWN * 60.0)
+		var hit := space.intersect_ray(query)
+		if not hit.is_empty() and hit["position"].y > 0.1:
+			on_curb += 1
+	var ratio := float(on_curb) / float(stops.size())
+	print("정류장 인도 위 %.1f%% (%d/%d)" % [ratio * 100.0, on_curb, stops.size()])
+	if ratio < STOP_ON_SIDEWALK_MIN:
+		failures.append("정류장 인도 위 %.3f < %.2f" % [ratio, STOP_ON_SIDEWALK_MIN])
 
 func _advance_guide() -> void:
 	# guide_idx 를 버스의 실제 위치를 따라 앞으로만 전진시킨다(뒤로 가지 않음).

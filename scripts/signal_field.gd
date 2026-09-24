@@ -59,13 +59,21 @@ func build(signals: Array) -> void:
 		var half := float(entry.get("half_width", DEFAULT_HALF_WIDTH))
 		var offset := TrafficSignal.offset_for(center.x, center.z)
 		var has_camera := bool(entry.get("camera", false))
+		# 베이크가 옆 차도를 피해 민 기둥 자리. 구 산출물에는 없다.
+		var laterals: Array = entry.get("pole_lateral", [])
+		var backs: Array = entry.get("pole_back", [])
 		for axis in 2:
 			var bearing := float(entry["axis_deg"][axis])
 			for way in 2:
 				# 진입 방향. 한 축의 양방향 모두에 기둥이 선다.
 				var forward := TrafficSignal.direction_of(bearing) \
 					* (1.0 if way == 0 else -1.0)
-				_add_head(center, forward, half, offset, axis, has_camera)
+				var lateral := half + POLE_LATERAL_M
+				var back := half + STOP_LINE_MARGIN_M
+				if laterals.size() == 4 and backs.size() == 4:
+					lateral = float(laterals[axis * 2 + way])
+					back = float(backs[axis * 2 + way])
+				_add_head(center, forward, half, lateral, back, offset, axis, has_camera)
 
 func _make_shared_resources() -> void:
 	# 등마다 새 머티리얼을 만들면 372 x 3 = 1116 개가 된다. 6개를 공유하고
@@ -111,11 +119,11 @@ func _make_shared_resources() -> void:
 	_camera_material.albedo_color = Color(0.92, 0.92, 0.90)
 
 func _add_head(center: Vector3, forward: Vector3, half: float,
-		offset: float, axis: int, has_camera: bool) -> void:
+		pole_lateral: float, pole_back: float, offset: float, axis: int,
+		has_camera: bool) -> void:
 	# forward 기준 오른쪽. Y 가 위인 좌표계에서 (x, z) 를 90° 돌린 것이다.
-	var pole_lateral := half + POLE_LATERAL_M
 	var right := Vector3(-forward.z, 0.0, forward.x)
-	var base := center - forward * (half + STOP_LINE_MARGIN_M) \
+	var base := center - forward * pole_back \
 		+ right * pole_lateral
 	min_pole_clearance = minf(min_pole_clearance, pole_lateral - half)
 
@@ -130,7 +138,9 @@ func _add_head(center: Vector3, forward: Vector3, half: float,
 
 	# 로컬 +X 는 월드 right 의 반대, 곧 도로 안쪽이다. 가로대가 이쪽으로 뻗어
 	# 등을 진입 차로 위 공중에 놓는다.
-	var arm_length := pole_lateral * ARM_RATIO
+	# 등은 기둥을 민 거리와 상관없이 진입 차로 위에 둔다. 기둥이 옆 차도
+	# 너머로 밀렸으면 그만큼 가로대가 길어진다.
+	var arm_length := pole_lateral - (half + POLE_LATERAL_M) * (1.0 - ARM_RATIO)
 
 	var pole := MeshInstance3D.new()
 	pole.mesh = _pole_mesh

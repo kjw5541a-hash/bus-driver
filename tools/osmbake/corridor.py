@@ -8,7 +8,8 @@ import zlib
 
 from .geo import METERS_PER_DEG_LAT, Projector
 from .graph import RoadGraph
-from .mesh import road_width
+from .mesh import (CURB_SLOPE_M, SIDEWALK_WIDTH, _on_roadway, _road_index,
+                   road_width)
 from .routing import _nearest_on_path
 
 MAJOR_HIGHWAYS = frozenset({"motorway", "trunk", "primary", "secondary",
@@ -222,3 +223,50 @@ def _merge_nearby(signals: list[dict]) -> list[dict]:
             continue
         kept.append(entry)
     return kept
+
+
+# 기둥이 정지선 뒤로 물러나는 거리. scripts/signal_field.gd 의
+# STOP_LINE_MARGIN_M 과 같아야 한다.
+POLE_BACK_M = 2.0
+POLE_STEP_M = 1.0
+POLE_REACH_M = 25.0
+# (바깥으로, 뒤로) 더 미는 거리 후보. 가까운 것부터 본다.
+_POLE_SHIFTS = sorted(
+    ((out * POLE_STEP_M, back * POLE_STEP_M)
+     for out in range(int(POLE_REACH_M / POLE_STEP_M) + 1)
+     for back in range(int(POLE_REACH_M / POLE_STEP_M) + 1)),
+    key=lambda shift: (math.hypot(*shift), shift))
+
+
+def place_poles(signals: list[dict], roads: list[dict],
+                projector: Projector) -> None:
+    """신호마다 진입 방향 4개의 기둥 자리(pole_lateral, pole_back)를 채운다.
+
+    기둥은 교차로 중심에서 반폭 + 인도 절반만큼 우측, 정지선 뒤에 선다.
+    그런데 중심은 복선 도로의 한쪽 차도 위 노드라, 반대 차도나 버스전용차로가
+    그 자리를 덮으면 기둥이 도로 한가운데 선다. 교차 도로도 복선이면 뒤쪽이
+    막힌다. 차도를 벗어나는 가장 가까운 자리를 바깥·뒤쪽에서 찾는다.
+    순서는 signal_field.gd 의 build 와 같다 — 축 0 정·역, 축 1 정·역.
+    """
+    index = _road_index(roads, projector)
+    for entry in signals:
+        half = entry["half_width"]
+        lateral0 = half + CURB_SLOPE_M + SIDEWALK_WIDTH / 2.0
+        back0 = half + POLE_BACK_M
+        laterals, backs = [], []
+        for bearing in entry["axis_deg"]:
+            for sign in (1.0, -1.0):
+                radians = math.radians(bearing)
+                fx, fz = math.sin(radians) * sign, -math.cos(radians) * sign
+                # 끝까지 차도면(고가 밑, 광장 등) 원래 자리로 둔다.
+                lateral, back = lateral0, back0
+                for out, behind in _POLE_SHIFTS:
+                    x = entry["x"] - fx * (back0 + behind) - fz * (lateral0 + out)
+                    z = entry["z"] - fz * (back0 + behind) + fx * (lateral0 + out)
+                    if not _on_roadway(index, x, z):
+                        lateral, back = lateral0 + out, back0 + behind
+                        break
+                laterals.append(round(lateral, 2))
+                backs.append(round(back, 2))
+        entry["pole_lateral"] = laterals
+        entry["pole_back"] = backs

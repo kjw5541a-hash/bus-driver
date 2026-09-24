@@ -2,7 +2,7 @@
 import unittest
 
 from tools.osmbake.corridor import (_has_camera, corridor_bbox, near_path,
-                                   signal_candidates)
+                                   place_poles, signal_candidates)
 from tools.osmbake.geo import Projector
 from tools.osmbake.graph import build_graph
 from tools.osmbake.routing import project_path
@@ -269,3 +269,33 @@ class TestSignalCandidates(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestPlacePoles(unittest.TestCase):
+    def test_옆_차도를_덮으면_바깥으로_민다(self):
+        # 동서 primary 둘. 하나는 교차로 중심을, 하나는 20 m 남쪽을 지난다.
+        # 동쪽으로 진입하는 방향(방위 90)의 우측은 남쪽이라 옆 차도(z 10~30)를
+        # 넘어야 하고, 서쪽으로 진입하는 방향의 우측(북쪽)은 비어 있다.
+        projector = Projector(37.500, 127.000)
+        south = 37.500 - 20.0 / 111320.0
+        roads = [way(1, [1, 2], [(37.500, 126.999), (37.500, 127.001)]),
+                 way(2, [3, 4], [(south, 126.999), (south, 127.001)])]
+        signals = [{"x": 0.0, "z": 0.0, "axis_deg": [90.0, 0.0],
+                    "half_width": 10.0}]
+        place_poles(signals, roads, projector)
+        east, west = signals[0]["pole_lateral"][:2]
+        self.assertGreaterEqual(east, 30.0)
+        self.assertAlmostEqual(west, 11.25, places=2)
+        self.assertEqual(signals[0]["pole_back"][:2], [12.0, 12.0])
+
+    def test_교차_도로가_복선이면_뒤로_민다(self):
+        # 남북 primary 둘이 교차로 중심과 12 m 서쪽을 지난다. 동쪽으로 진입하는
+        # 기둥 자리(x -12)가 서쪽 차도(x -22~-2) 위라 그 너머로 물러나야 한다.
+        projector = Projector(37.500, 127.000)
+        west = 127.000 - 12.0 / (111320.0 * 0.7934)
+        roads = [way(1, [1, 2], [(37.499, 127.000), (37.501, 127.000)]),
+                 way(2, [3, 4], [(37.499, west), (37.501, west)])]
+        signals = [{"x": 0.0, "z": 0.0, "axis_deg": [90.0, 0.0],
+                    "half_width": 10.0}]
+        place_poles(signals, roads, projector)
+        self.assertGreaterEqual(signals[0]["pole_back"][0], 22.0)

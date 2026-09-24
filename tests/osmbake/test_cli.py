@@ -36,6 +36,28 @@ class TestFindTerminalNode(unittest.TestCase):
         nodes = [stop(99, 37.500, 127.00199, "종점")]
         self.assertEqual(cli.find_terminal_node(graph, nodes, "종점"), 10)
 
+    def test_노선_멤버_도로를_골목보다_먼저_고른다(self):
+        # 654번은 기점 정류장 옆 골목 노드를 잡아 490 m 를 주택가로 돌았다.
+        # 골목(2)이 정류장에 더 가까워도 노선 멤버 도로(1)의 노드를 골라야 한다.
+        graph = build_graph([
+            way(1, [10, 11], [(37.500, 127.000), (37.500, 127.002)]),
+            way(2, [20, 21], [(37.5003, 127.0010), (37.5006, 127.0010)],
+                highway="residential"),
+        ])
+        nodes = [stop(99, 37.5002, 127.0010, "기점")]
+        self.assertEqual(cli.find_terminal_node(graph, nodes, "기점"), 20)
+        self.assertIn(cli.find_terminal_node(graph, nodes, "기점",
+                                             preferred_ways=frozenset({1})),
+                      (10, 11))
+
+    def test_같은_이름_정류장_전부를_본다(self):
+        # 같은 이름 노드가 여럿이면 어느 것에든 가장 가까운 노드다.
+        graph = build_graph([way(1, [10, 11],
+                                 [(37.500, 127.000), (37.500, 127.002)])])
+        nodes = [stop(98, 37.510, 127.000, "기점"),
+                 stop(99, 37.50002, 127.00199, "기점")]
+        self.assertEqual(cli.find_terminal_node(graph, nodes, "기점"), 11)
+
     def test_이름이_없으면_None(self):
         graph = build_graph([way(1, [10, 11],
                                  [(37.500, 127.000), (37.500, 127.002)])])
@@ -64,9 +86,11 @@ class TestBake(unittest.TestCase):
                          {"lat": 37.5006, "lon": 126.9402},
                          {"lat": 37.5004, "lon": 126.9402}],
             "tags": {"building": "yes", "building:levels": "5"}}]
-        stops = [stop(90, 37.50003, 126.94005, "홍은2동주민센터"),
-                 stop(91, 37.50003, 126.94300, "중간 정류장"),
-                 stop(92, 37.50003, 126.94398, "신촌전철역")]
+        # 경로는 정동쪽으로 간다. 정류장은 진행 방향 우측, 곧 남쪽에
+        # 둔다 — 북쪽 정류장은 반대 방향 노선의 것이라 걸러진다.
+        stops = [stop(90, 37.49997, 126.94005, "홍은2동주민센터"),
+                 stop(91, 37.49997, 126.94300, "중간 정류장"),
+                 stop(92, 37.49997, 126.94398, "신촌전철역")]
         (self.cache_dir / "seoul-seodaemun03_corridor.json").write_text(
             json.dumps({"elements": route_ways + buildings + stops}),
             encoding="utf-8")

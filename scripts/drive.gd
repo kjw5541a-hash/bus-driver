@@ -16,6 +16,9 @@ var signal_field: SignalField
 var patrol: PatrolCars
 var watch: ViolationWatch
 var hud: ViolationHud
+var stop_field: StopField
+var boarding: BoardingWatch
+var boarding_hud: BoardingHud
 
 func _ready() -> void:
 	var route_id := route_id_from_args()
@@ -73,6 +76,29 @@ func _ready() -> void:
 	watch.violation.connect(hud.on_violation)
 	watch.busted.connect(hud.on_busted)
 
+	boarding = BoardingWatch.new()
+	boarding.build(data.stop_targets)
+	boarding.bus = bus
+	add_child(boarding)
+
+	stop_field = StopField.new()
+	stop_field.build(data.stops, boarding.plan)
+	stop_field.target = bus
+	add_child(stop_field)
+
+	boarding_hud = BoardingHud.new()
+	add_child(boarding_hud)
+	boarding_hud.set_route(data.stops)
+	boarding.boarding_started.connect(boarding_hud.on_boarding_started)
+	boarding.bell_rung.connect(boarding_hud.on_bell_rung)
+	# 마지막 한 명은 정차가 끝나는 프레임에 탄다. 그때는 is_boarding 이 이미
+	# 꺼져 _update_boarding_hud 가 못 치운다. 신호 안에서는 boarding_index 가
+	# 아직 살아 있다.
+	boarding.boarding_finished.connect(func(boarded: int, _alighted: int) -> void:
+		stop_field.set_boarded(boarding.boarding_index, boarded))
+	boarding.boarding_finished.connect(boarding_hud.on_boarding_finished)
+	boarding.stop_missed.connect(boarding_hud.on_stop_missed)
+
 func route_id_from_args() -> String:
 	"""--route=<id> 가 있으면 그것, 없으면 메뉴가 고른 노선."""
 	for argument in OS.get_cmdline_user_args():
@@ -95,6 +121,12 @@ func _physics_process(delta: float) -> void:
 		if Input.is_key_pressed(KEY_R):
 			get_tree().reload_current_scene()
 		return
+	if boarding != null and boarding.is_boarding:
+		# 문이 열려 있다. 브레이크만 걸어 버스를 붙잡는다. 승하차 시간을
+		# 주행으로 건너뛸 수 없어야 시간 압박이 성립한다.
+		bus.apply_axes(0.0, 0.0, 1.0, false, delta)
+		_update_boarding_hud()
+		return
 	input.poll(bus.linear_velocity.length())
 	bus.apply_axes(input.steer, input.throttle, input.brake, input.reverse, delta)
 
@@ -105,6 +137,8 @@ func _physics_process(delta: float) -> void:
 	if view_asked and camera != null:
 		camera.toggle_view()
 
+	_update_boarding_hud()
+
 	var respawn_asked := input.take_respawn()
 	if touch != null and touch.respawn_requested:
 		touch.respawn_requested = false
@@ -112,8 +146,18 @@ func _physics_process(delta: float) -> void:
 	if respawn_asked:
 		respawn()
 
+func _update_boarding_hud() -> void:
+	if boarding == null or boarding_hud == null:
+		return
+	boarding_hud.update_status(boarding)
+	if boarding.is_boarding and stop_field != null:
+		stop_field.set_boarded(boarding.boarding_index, boarding.boarded_so_far)
+
 func respawn() -> void:
 	"""가장 가까운 경로점으로 노선 방향을 보게 되돌린다."""
+	if boarding != null and boarding.is_boarding:
+		# 리스폰으로 승하차 시간을 건너뛸 수 없다.
+		return
 	var index := data.nearest_index(bus.global_position)
 	var look_index: int = mini(index + 1, data.route.size() - 1)
 	if look_index == index:
