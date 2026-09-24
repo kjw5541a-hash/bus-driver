@@ -137,4 +137,22 @@ func _report() -> void:
 	# 신호 기둥에는 충돌면이 없어야 한다. 있으면 인도 위 기둥에 버스가 걸린다.
 	ok(drive.signal_field.find_children("*", "StaticBody3D", true, false).is_empty(),
 		"신호 기둥에 충돌면이 붙었다")
+
+	# 정류장이 섰는지, 컬링이 실제로 도는지 본다.
+	ok(drive.stop_field != null, "StopField 가 없다")
+	ok(drive.boarding != null, "BoardingWatch 가 없다")
+	ok(drive.boarding_hud != null, "BoardingHud 가 없다")
+	ok(drive.data.stop_targets.size() == drive.data.stops.size(),
+		"정차 목표점이 %d 개인데 정류장은 %d 곳이다"
+		% [drive.data.stop_targets.size(), drive.data.stops.size()])
+	ok(drive.stop_field.sign_count == drive.data.stops.size(),
+		"표지판이 %d 개인데 정류장은 %d 곳이다"
+		% [drive.stop_field.sign_count, drive.data.stops.size()])
+	ok(drive.stop_field.updated_count > 0, "정류장을 하나도 안 보였다")
+	ok(drive.stop_field.updated_count < drive.data.stops.size(),
+		"거리 컬링이 안 걸려 정류장 %d 곳을 전부 보였다"
+		% drive.data.stops.size())
+	# 승객에 충돌면이 붙으면 버스가 사람을 들이받고 주행이 막힌다.
+	ok(drive.stop_field.find_children("*", "StaticBody3D", true, false).is_empty(),
+		"정류장에 충돌면이 붙었다")
 	finish()
