@@ -7,6 +7,16 @@ class_name RouteData
 # 오토로드를 따로 만들지 않으려고 static 변수를 쓴다.
 static var selected_id := "seoul-100"
 
+# 메뉴가 고른 구간. selected_id 와 같은 이유로 static 이다.
+static var selected_section := 0
+
+# 구간. 한 판을 10 분 안팎으로 만들려고 정류장 10 곳씩 자른다. 경계 정류장은
+# 양쪽 구간이 함께 쓴다 — 이어 달리면 실제 노선처럼 끊김이 없다.
+const SECTION_STOPS := 10
+const SECTION_MIN_STOPS := 5     # 이보다 짧은 꼬리는 앞 구간에 붙인다
+const LEAD_IN_M := 60.0          # 첫 정류장 앞 여유. 출발하자마자 서지 않게
+const SECTION_SIGNAL_M := 30.0   # 잘린 경로에서 이만큼 안의 신호만 남긴다
+
 var id := ""
 var display_name := ""
 var from_name := ""
@@ -17,6 +27,9 @@ var chunks: Array = []
 var signals: Array = []
 # 정차 목표점. stops 와 같은 순서다. 자세한 이유는 point_at_progress 를 보라.
 var stop_targets: PackedVector3Array = []
+# slice() 가 채운다. 자르지 않은 원본은 0 / 1 이다.
+var section := 0
+var section_count := 1
 
 static func load_route(route_id: String) -> RouteData:
 	var raw := FileAccess.get_file_as_string("res://assets/routes/route_%s.json" % route_id)
@@ -92,3 +105,74 @@ func _build_stop_targets() -> void:
 	stop_targets = PackedVector3Array()
 	for stop in stops:
 		stop_targets.append(point_at_progress(float(stop.get("progress_m", 0.0))))
+
+func sections() -> Array:
+	"""구간마다 Vector2i(첫 정류장, 끝 정류장). 정류장이 2 곳 미만이면 빈 배열."""
+	var last := stops.size() - 1
+	var bounds: Array = []
+	if last < 1:
+		return bounds
+	var start := 0
+	while start < last:
+		var end := mini(start + SECTION_STOPS, last)
+		bounds.append(Vector2i(start, end))
+		start = end
+	var tail: Vector2i = bounds[bounds.size() - 1]
+	if bounds.size() > 1 and tail.y - tail.x + 1 < SECTION_MIN_STOPS:
+		bounds.pop_back()
+		bounds[bounds.size() - 1] = Vector2i(bounds[bounds.size() - 1].x, tail.y)
+	return bounds
+
+func slice(index: int) -> RouteData:
+	"""index 번 구간만 담은 새 RouteData. 범위 밖이면 0 번. 구간이 없으면 자신."""
+	var bounds := sections()
+	if bounds.is_empty():
+		return self
+	if index < 0 or index >= bounds.size():
+		index = 0
+	var range_of: Vector2i = bounds[index]
+	var start_m := maxf(0.0, float(stops[range_of.x].get("progress_m", 0.0)) - LEAD_IN_M)
+	var end_m := float(stops[range_of.y].get("progress_m", 0.0))
+
+	var part := RouteData.new()
+	part.id = id
+	part.display_name = display_name
+	part.from_name = from_name
+	part.to_name = to_name
+	part.chunks = chunks
+	part.section = index
+	part.section_count = bounds.size()
+	part.route = _route_between(start_m, end_m)
+	for stop_index in range(range_of.x, range_of.y + 1):
+		var stop: Dictionary = stops[stop_index].duplicate()
+		stop["progress_m"] = float(stop.get("progress_m", 0.0)) - start_m
+		part.stops.append(stop)
+	for entry in signals:
+		var point := Vector3(float(entry["x"]), 0.0, float(entry["z"]))
+		if part.distance_to_route(point) <= SECTION_SIGNAL_M:
+			part.signals.append(entry)
+	part._build_stop_targets()
+	return part
+
+func length_m() -> float:
+	var total := 0.0
+	for index in range(1, route.size()):
+		total += route[index - 1].distance_to(route[index])
+	return total
+
+func distance_to_route(point: Vector3) -> float:
+	var best := INF
+	for index in range(1, route.size()):
+		var foot := Geometry3D.get_closest_point_to_segment(point, route[index - 1], route[index])
+		best = minf(best, foot.distance_to(point))
+	return best
+
+func _route_between(start_m: float, end_m: float) -> PackedVector3Array:
+	var part := PackedVector3Array([point_at_progress(start_m)])
+	var travelled := 0.0
+	for index in range(1, route.size()):
+		travelled += route[index - 1].distance_to(route[index])
+		if travelled > start_m and travelled < end_m:
+			part.append(route[index])
+	part.append(point_at_progress(end_m))
+	return part

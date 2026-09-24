@@ -3,8 +3,8 @@ class_name Drive
 # 주행 씬 조립. 도시를 올리고, 버스를 노선 첫 점에 놓고, 카메라와 내비 라인을
 # 붙인 다음, 매 프레임 입력을 버스에 먹인다.
 #
-# 종점에 도착해도 아무 일도 일어나지 않는다 — 완주 판정·시간·점수는 5번
-# 서브프로젝트다.
+# 노선은 구간 하나로 잘라 싣는다. 끝 정류장 승하차가 끝나면 RunClock 이
+# 멈추고 결과 화면이 뜬다.
 
 var data: RouteData
 var bus: Bus
@@ -19,6 +19,9 @@ var hud: ViolationHud
 var stop_field: StopField
 var boarding: BoardingWatch
 var boarding_hud: BoardingHud
+var clock: RunClock
+var clock_hud: ClockHud
+var result: ResultPanel
 
 func _ready() -> void:
 	var route_id := route_id_from_args()
@@ -26,6 +29,7 @@ func _ready() -> void:
 	if data == null:
 		push_error("노선 데이터를 읽지 못했다: %s" % route_id)
 		return
+	data = data.slice(section_from_args())
 
 	city = City.new()
 	add_child(city)
@@ -99,12 +103,48 @@ func _ready() -> void:
 	boarding.boarding_finished.connect(boarding_hud.on_boarding_finished)
 	boarding.stop_missed.connect(boarding_hud.on_stop_missed)
 
+	clock = RunClock.new()
+	clock.start(Timetable.deadline_for(data), data.stops.size() - 1)
+	add_child(clock)
+	# boarding_index 는 boarding_finished 신호 안에서 아직 살아 있다.
+	boarding.boarding_finished.connect(func(boarded: int, _alighted: int) -> void:
+		clock.on_stop_served(boarding.boarding_index, boarded))
+	watch.busted.connect(clock.on_busted)
+	clock.finished.connect(_on_finished)
+
+	clock_hud = ClockHud.new()
+	add_child(clock_hud)
+
+	result = ResultPanel.new()
+	add_child(result)
+	result.next_requested.connect(func() -> void:
+		RouteData.selected_id = data.id
+		RouteData.selected_section = data.section + 1
+		get_tree().reload_current_scene())
+	result.retry_requested.connect(func() -> void: get_tree().reload_current_scene())
+	result.menu_requested.connect(func() -> void:
+		get_tree().change_scene_to_file("res://scenes/menu.tscn"))
+
 func route_id_from_args() -> String:
 	"""--route=<id> 가 있으면 그것, 없으면 메뉴가 고른 노선."""
 	for argument in OS.get_cmdline_user_args():
 		if argument.begins_with("--route="):
 			return argument.trim_prefix("--route=")
 	return RouteData.selected_id
+
+func section_from_args() -> int:
+	"""--section=<n> 이 있으면 그것, 없으면 메뉴가 고른 구간. 범위 밖은 slice 가 0 으로."""
+	for argument in OS.get_cmdline_user_args():
+		if argument.begins_with("--section="):
+			return int(argument.trim_prefix("--section="))
+	return RouteData.selected_section
+
+func _on_finished() -> void:
+	var card := ScoreCard.tally(clock.elapsed_s, clock.deadline_s,
+		clock.boarded_total, watch.violations, watch.camera_violations,
+		boarding.missed, boarding.left_behind, clock.respawns)
+	var title := "%s · 구간 %d/%d" % [data.display_name, data.section + 1, data.section_count]
+	result.show_result(card, title, data.section < data.section_count - 1)
 
 func _place_at_start() -> void:
 	# 노선 첫 점에서 진행 방향을 보고 선다.
@@ -114,6 +154,12 @@ func _place_at_start() -> void:
 
 func _physics_process(delta: float) -> void:
 	if bus == null or input == null:
+		return
+	if clock_hud != null:
+		clock_hud.update_clock(clock)
+	if clock != null and clock.is_finished:
+		# 완주. 결과 화면이 떠 있는 동안 버스를 붙잡는다.
+		bus.apply_axes(0.0, 0.0, 1.0, false, delta)
 		return
 	if watch != null and watch.is_busted:
 		# 적발되면 조향과 가속을 끊고 브레이크만 건다. 버스가 서서히 선다.
@@ -163,3 +209,5 @@ func respawn() -> void:
 	if look_index == index:
 		look_index = maxi(index - 1, 0)
 	bus.respawn_to(data.route[index], data.route[look_index])
+	if clock != null:
+		clock.respawns += 1

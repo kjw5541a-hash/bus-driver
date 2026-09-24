@@ -13,6 +13,10 @@ const DOOR_S := 3.0               # 문 개폐. 승객이 0 명이어도 든다
 const BOARD_S := 2.0              # 1 인 탑승. 교통카드 찍는 시간
 const ALIGHT_S := 1.0             # 1 인 하차
 const WALK_SPEED_MPS := 1.2
+# 대기 인원은 maxi(0, randi_range(WAITING_MIN, WAITING_MAX)) 다. 0 명이 1/3,
+# 평균 2.9 명. Timetable 이 같은 분포로 기대 정차 시간을 낸다.
+const WAITING_MIN := -3
+const WAITING_MAX := 8
 
 var onboard := 0
 var left_behind := 0
@@ -29,7 +33,7 @@ func build(stop_count: int) -> void:
 	for _index in stop_count:
 		# 균등 분포로 뽑으면 정류장 114 곳 중 101 곳에 사람이 있어 계속 선다.
 		# 이 식은 0 명이 1/3, 평균 2.9 명이다.
-		_waiting.append(maxi(0, randi_range(-3, 8)))
+		_waiting.append(maxi(0, randi_range(WAITING_MIN, WAITING_MAX)))
 		_destined.append(0)
 
 func waiting_at(index: int) -> int:

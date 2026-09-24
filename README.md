@@ -58,6 +58,15 @@ godot
 내릴 사람이 있으면 차임과 함께 붉은 하차벨 표시등이 켜진다. 탈 사람도 내릴 사람도
 없는 정류장은 그냥 지나가면 된다. 대기 인원은 매 플레이 새로 정해진다.
 
+노선은 정류장 10곳 단위 구간으로 나뉜다. 메뉴에서 노선을 누르면 구간 목록과
+마감이 뜬다. 마감은 구간 길이를 32 km/h 로 달리는 시간에 정류장당 기대 정차
+시간(약 10 초)과 신호당 기대 대기(8.25 초)를 더해 자동으로 정한다. 오른쪽 위에
+남은 시간이 줄고, 넘기면 초과 시간이 붉게 올라간다. 끝 정류장에서 승하차를 마치면
+결과 화면이 뜬다 — 완주 1000 점에 태운 승객 1명당 +20, 일찍 도착 초당 +2, 초과
+초당 −5, 신호 위반 −50, 카메라 단속 −150, 놓친 정류장 −100, 못 태운 승객 −10,
+리스폰 −30. 마감 안에 들어오고 감점이 150 이하면 별 셋이다. 결과 화면에서
+`Enter` 는 다음 구간, `R` 은 다시 하기다.
+
 ## 테스트
 
 ```bash
@@ -66,8 +75,8 @@ tests/bake/run_verify.sh            # 노선을 굽고 Godot 헤드리스 검증
 tests/game/run_game_tests.sh        # 게임 쪽 헤드리스 테스트
 ```
 
-`run_game_tests.sh` 는 노선 데이터·도시 로딩·입력 매핑·회전 반경·내비 라인·주행
-스모크를 검사한다. 성능은 창이 필요해서 따로 잰다.
+`run_game_tests.sh` 는 노선 데이터·도시 로딩·입력 매핑·회전 반경·내비 라인·구간과
+마감·점수·시계·주행 스모크를 검사한다. 성능은 창이 필요해서 따로 잰다.
 
 ```bash
 godot res://tests/game/measure_fps.tscn -- --route=seoul-100
@@ -86,3 +95,5 @@ godot res://tests/game/measure_fps.tscn -- --route=seoul-100
 - 구현 계획: `docs/superpowers/plans/2026-09-23-signals-violations.md`
 - 설계: `docs/superpowers/specs/2026-09-24-stops-passengers-design.md`
 - 구현 계획: `docs/superpowers/plans/2026-09-24-stops-passengers.md`
+- 설계: `docs/superpowers/specs/2026-09-24-timetable-score-design.md`
+- 구현 계획: `docs/superpowers/plans/2026-09-24-timetable-score.md`
