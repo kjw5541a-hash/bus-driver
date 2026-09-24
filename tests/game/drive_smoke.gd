@@ -142,6 +142,10 @@ func _report() -> void:
 	ok(drive.stop_field != null, "StopField 가 없다")
 	ok(drive.boarding != null, "BoardingWatch 가 없다")
 	ok(drive.boarding_hud != null, "BoardingHud 가 없다")
+	# 이 테스트는 drive 의 물리 처리를 꺼서 HUD 갱신이 안 돈다. 직접 부른다.
+	drive.boarding_hud.update_status(drive.boarding)
+	drive.boarding_hud.on_bell_rung(0)
+	ok(drive.boarding_hud.bell_count == 1, "하차벨 차임이 안 울렸다")
 	ok(drive.data.stop_targets.size() == drive.data.stops.size(),
 		"정차 목표점이 %d 개인데 정류장은 %d 곳이다"
 		% [drive.data.stop_targets.size(), drive.data.stops.size()])

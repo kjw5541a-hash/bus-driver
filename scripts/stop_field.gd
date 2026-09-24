@@ -109,12 +109,17 @@ func _add_stop(index: int, here: Vector3, waiting: int) -> void:
 		_grid[cell] = PackedInt32Array()
 	_grid[cell].append(index)
 
-func clear_riders(index: int) -> void:
-	"""승객이 탔다. 캡슐을 치운다."""
+func set_boarded(index: int, count: int) -> void:
+	"""앞에서부터 count 명이 탔다. 그만큼 캡슐을 치운다.
+
+	한꺼번에 치우면 인원에 따라 승하차 시간이 다른 것이 안 보인다. 정원이
+	차서 못 탄 사람은 그대로 남는다.
+	"""
 	if index < 0 or index >= _stops.size():
 		return
-	for rider in _stops[index]["riders"]:
-		rider.visible = false
+	var riders: Array = _stops[index]["riders"]
+	for rider_index in range(riders.size()):
+		riders[rider_index].visible = rider_index >= count
 
 func _physics_process(_delta: float) -> void:
 	if target == null or _stops.is_empty():

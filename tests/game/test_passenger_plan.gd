@@ -8,6 +8,9 @@ func _ready() -> void:
 	_test_terminus_empties_bus()
 	_test_needs_stop()
 	_test_dwell_formula()
+	_test_dwell_scales_with_count()
+	_test_progress()
+	_test_alighting_at()
 	finish()
 
 func _test_waiting_range() -> void:
@@ -100,3 +103,35 @@ func _test_dwell_formula() -> void:
 		PassengerPlan.DOOR_S + 12.0 / PassengerPlan.WALK_SPEED_MPS
 		+ 3.0 * PassengerPlan.BOARD_S, 0.001,
 		"걸어오는 시간")
+
+func _test_dwell_scales_with_count() -> void:
+	# 적으면 빨리, 많으면 느리게. 1 명과 8 명이 확실히 갈려야 한다.
+	var plan := PassengerPlan.new()
+	var one := plan.dwell_for(1, 0, 0.0, 1)
+	var eight := plan.dwell_for(8, 0, 0.0, 8)
+	print("정차 1 명 %.1f 초, 8 명 %.1f 초" % [one, eight])
+	ok(eight >= one * 3.0, "8 명(%.1f 초)이 1 명(%.1f 초)의 3 배가 안 된다" % [eight, one])
+
+func _test_progress() -> void:
+	# 문 3 초, 걸어오기 2 초, 3 명 탑승, 2 명 하차.
+	var walk := 2.0
+	ok(PassengerPlan.progress(1.0, 3, 2, walk) == Vector2i(0, 0), "문이 열리기 전에 움직였다")
+	# 하차는 문이 열리자마자, 탑승은 걸어온 뒤에 시작한다.
+	var mid := PassengerPlan.progress(PassengerPlan.DOOR_S + PassengerPlan.ALIGHT_S + 0.01, 3, 2, walk)
+	ok(mid == Vector2i(0, 1), "문 연 직후 진행이 %s 다" % mid)
+	var dwell := PassengerPlan.new().dwell_for(3, 2, walk * PassengerPlan.WALK_SPEED_MPS, 3)
+	ok(PassengerPlan.progress(dwell, 3, 2, walk) == Vector2i(3, 2), "정차가 끝났는데 다 못 탔다")
+	ok(PassengerPlan.progress(dwell + 100.0, 3, 2, walk) == Vector2i(3, 2), "인원을 넘겨 셌다")
+
+func _test_alighting_at() -> void:
+	var plan := PassengerPlan.new()
+	plan.build(4)
+	for index in 4:
+		plan.force_waiting(index, 0)
+	plan.force_waiting(0, 5)
+	plan.serve(0, 0.0)
+	var ahead := plan.alighting_at(1) + plan.alighting_at(2)
+	# 종점 몫은 onboard 전원이라 따로 센다.
+	ok(ahead <= 5, "앞 정류장에서 내릴 사람이 %d 명이다" % ahead)
+	ok(plan.alighting_at(3) == 5, "종점에서 내릴 사람이 %d 명이다" % plan.alighting_at(3))
+	ok(plan.alighting_at(-1) == 0 and plan.alighting_at(9) == 0, "범위 밖이 0 이 아니다")

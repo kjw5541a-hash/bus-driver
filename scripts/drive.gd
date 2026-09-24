@@ -90,7 +90,12 @@ func _ready() -> void:
 	add_child(boarding_hud)
 	boarding_hud.set_route(data.stops)
 	boarding.boarding_started.connect(boarding_hud.on_boarding_started)
-	boarding.boarding_started.connect(stop_field.clear_riders)
+	boarding.bell_rung.connect(boarding_hud.on_bell_rung)
+	# 마지막 한 명은 정차가 끝나는 프레임에 탄다. 그때는 is_boarding 이 이미
+	# 꺼져 _update_boarding_hud 가 못 치운다. 신호 안에서는 boarding_index 가
+	# 아직 살아 있다.
+	boarding.boarding_finished.connect(func(boarded: int, _alighted: int) -> void:
+		stop_field.set_boarded(boarding.boarding_index, boarded))
 	boarding.boarding_finished.connect(boarding_hud.on_boarding_finished)
 	boarding.stop_missed.connect(boarding_hud.on_stop_missed)
 
@@ -144,10 +149,9 @@ func _physics_process(delta: float) -> void:
 func _update_boarding_hud() -> void:
 	if boarding == null or boarding_hud == null:
 		return
-	boarding_hud.update_status(
-		boarding.stop_name_at(boarding.next_index, data.stops),
-		boarding.distance_to_next(), boarding.onboard,
-		boarding.boarding_left, boarding.boarding_total)
+	boarding_hud.update_status(boarding)
+	if boarding.is_boarding and stop_field != null:
+		stop_field.set_boarded(boarding.boarding_index, boarding.boarded_so_far)
 
 func respawn() -> void:
 	"""가장 가까운 경로점으로 노선 방향을 보게 되돌린다."""

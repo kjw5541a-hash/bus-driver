@@ -7,6 +7,9 @@ class_name BoardingHud
 # 쓴다. 적발 패널이 위에 오도록 layer 는 ViolationHud(10) 보다 낮게 둔다.
 
 const MISS_FLASH_S := 1.5
+const CHIME_RATE := 22050
+
+var bell_count := 0          # 테스트가 차임이 울렸는지 본다
 
 var _stops: Array = []
 var _next_label: Label
@@ -14,6 +17,8 @@ var _onboard_label: Label
 var _progress: ProgressBar
 var _miss_label: Label
 var _miss_left := 0.0
+var _bell_label: Label
+var _chime: AudioStreamPlayer
 
 func _ready() -> void:
 	layer = 9
@@ -42,6 +47,19 @@ func _ready() -> void:
 	_progress.visible = false
 	box.add_child(_progress)
 
+	# 실제 버스의 "정차합니다" 표시등처럼 붉게 켜 둔다.
+	_bell_label = Label.new()
+	_bell_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_bell_label.add_theme_font_size_override("font_size", 20)
+	_bell_label.add_theme_color_override("font_color", Color(1.0, 0.25, 0.2))
+	_bell_label.text = "● 하차벨 · 다음 정류장에서 내립니다"
+	_bell_label.visible = false
+	box.add_child(_bell_label)
+
+	_chime = AudioStreamPlayer.new()
+	_chime.stream = _make_chime()
+	add_child(_chime)
+
 	_miss_label = Label.new()
 	_miss_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_miss_label.add_theme_font_size_override("font_size", 18)
@@ -52,21 +70,50 @@ func _ready() -> void:
 func set_route(stops: Array) -> void:
 	_stops = stops
 
-func update_status(next_name: String, distance_m: float, onboard: int,
-		boarding_left: float, boarding_total: float) -> void:
+func update_status(watch: BoardingWatch) -> void:
+	_bell_label.visible = watch.bell_on
+	if watch.is_boarding and watch.boarding_total > 0.0:
+		# 몇 명 중 몇 명째인지 보여야 인원에 따라 시간이 다른 게 읽힌다.
+		_next_label.text = "%s 승하차 중" % _name_of(watch.boarding_index)
+		_onboard_label.text = "탑승 %d/%d · 하차 %d/%d" % [
+			watch.boarded_so_far, watch.board_count,
+			watch.alighted_so_far, watch.alight_count]
+		_progress.visible = true
+		_progress.value = 100.0 * (1.0 - watch.boarding_left / watch.boarding_total)
+		return
+	_progress.visible = false
+	var distance_m := watch.distance_to_next()
 	if distance_m < 0.0:
 		_next_label.text = "종점"
 	else:
-		_next_label.text = "다음 %s · %d m" % [next_name, int(distance_m)]
-	_onboard_label.text = "탑승 %d명" % onboard
-	if boarding_left > 0.0 and boarding_total > 0.0:
-		_progress.visible = true
-		_progress.value = 100.0 * (1.0 - boarding_left / boarding_total)
-	else:
-		_progress.visible = false
+		_next_label.text = "다음 %s · %d m" % [_name_of(watch.next_index), int(distance_m)]
+	_onboard_label.text = "탑승 %d명" % watch.onboard
 
 func on_boarding_started(stop_index: int) -> void:
 	_next_label.text = "%s 승하차 중" % _name_of(stop_index)
+
+func on_bell_rung(_stop_index: int) -> void:
+	bell_count += 1
+	_chime.play()
+
+func _make_chime() -> AudioStreamWAV:
+	"""띵동 두 음을 코드로 합성한다. 음원 파일을 들이지 않는다."""
+	var data := PackedByteArray()
+	for note in [[880.0, 0.18], [660.0, 0.35]]:
+		var frequency: float = note[0]
+		var count := int(float(note[1]) * CHIME_RATE)
+		for i in count:
+			var t := float(i) / CHIME_RATE
+			var sample := sin(TAU * frequency * t) * exp(-t * 6.0) * 0.4
+			var value := int(sample * 32767.0)
+			data.append(value & 0xFF)
+			data.append((value >> 8) & 0xFF)
+	var stream := AudioStreamWAV.new()
+	stream.format = AudioStreamWAV.FORMAT_16_BITS
+	stream.mix_rate = CHIME_RATE
+	stream.stereo = false
+	stream.data = data
+	return stream
 
 func on_boarding_finished(boarded: int, alighted: int) -> void:
 	_progress.visible = false

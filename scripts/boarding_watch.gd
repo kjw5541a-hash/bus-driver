@@ -14,6 +14,8 @@ const BACK_WINDOW := 2       # 되돌아가 다시 서는 것을 허용하는 �
 signal boarding_started(stop_index: int)
 signal boarding_finished(boarded: int, alighted: int)
 signal stop_missed(stop_index: int)
+# 다음 정류장에서 내릴 사람이 벨을 눌렀다.
+signal bell_rung(stop_index: int)
 
 var bus: Node3D
 var plan: PassengerPlan
@@ -24,12 +26,28 @@ var is_boarding := false
 var boarding_left := 0.0
 var boarding_total := 0.0    # 진행 바가 비율을 내려면 전체 길이도 있어야 한다
 var next_index := 0
+# 하차벨 표시등. 다음 정류장에 내릴 사람이 있으면 켜지고, 그 정류장에서
+# 문이 열리면 꺼진다.
+var bell_on := false
 
 # 5번 서브프로젝트가 한 군데서 다 읽도록 plan 의 값을 그대로 내놓는다.
 var onboard: int:
 	get: return plan.onboard if plan != null else 0
 var left_behind: int:
 	get: return plan.left_behind if plan != null else 0
+var boarding_index: int:
+	get: return _boarding_index
+# 정차 중 지금까지 탄 사람과 내린 사람. 승객이 한 명씩 사라지게 하고
+# HUD 에 인원을 세는 데 쓴다.
+var boarded_so_far: int:
+	get: return _progress().x
+var alighted_so_far: int:
+	get: return _progress().y
+# 이번 정차에서 탈 사람과 내릴 사람 전체.
+var board_count: int:
+	get: return int(_pending.get("boarded", 0))
+var alight_count: int:
+	get: return int(_pending.get("alighted", 0))
 
 var _targets: PackedVector3Array = []
 var _boarding_index := -1
@@ -38,6 +56,7 @@ var _done := {}              # 승하차를 마친 정류장
 var _missed_once := {}       # 놓침은 정류장당 한 번만 센다
 var _last_position := Vector3.ZERO
 var _has_last := false
+var _bell_index := -1        # 벨 여부를 마지막으로 따진 next_index
 
 func build(targets: PackedVector3Array) -> void:
 	_targets = targets
@@ -82,6 +101,7 @@ func _physics_process(delta: float) -> void:
 	while next_index < best:
 		_pass(next_index)
 		next_index += 1
+	_check_bell()
 
 	if best_distance <= STOP_RADIUS_M and speed < STOP_SPEED_MPS \
 			and not _done.has(best) and plan.needs_stop(best):
@@ -98,12 +118,29 @@ func _pass(index: int) -> void:
 	missed += 1
 	stop_missed.emit(index)
 
+func _check_bell() -> void:
+	"""다음 정류장이 바뀌면 거기서 내릴 사람이 있는지 보고 벨을 울린다."""
+	if next_index == _bell_index:
+		return
+	_bell_index = next_index
+	bell_on = plan.alighting_at(next_index) > 0
+	if bell_on:
+		bell_rung.emit(next_index)
+
+func _progress() -> Vector2i:
+	if not is_boarding or _pending.is_empty():
+		return Vector2i.ZERO
+	return PassengerPlan.progress(boarding_total - boarding_left,
+		int(_pending["boarded"]), int(_pending["alighted"]),
+		float(_pending["walk"]))
+
 func _start(index: int, walk_distance_m: float) -> void:
 	_pending = plan.serve(index, walk_distance_m)
 	_boarding_index = index
 	boarding_total = float(_pending["dwell"])
 	boarding_left = boarding_total
 	is_boarding = true
+	bell_on = false
 	boarding_started.emit(index)
 
 func _tick(delta: float) -> void:
