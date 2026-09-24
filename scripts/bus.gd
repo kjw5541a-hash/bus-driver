@@ -7,7 +7,12 @@ class_name Bus
 
 const MASS := 12000.0
 const ENGINE_FORCE := 30000.0
-const BRAKE_FORCE := 40.0
+# 50 km/h 에서 17 m, 2.5 초에 선다(약 0.57 g). 처음 값 40 은 60 m, 10 초라
+# 정류장에 맞춰 설 수가 없었다. test_brake 가 지킨다.
+const BRAKE_FORCE := 250.0
+# 가속을 뗐을 때 거는 엔진 브레이크. 없으면 12 t 이 관성으로 계속 굴러간다.
+# 1.9 m/s² 로 준다. 서 있을 때 버스를 붙잡아 두는 몫도 한다.
+const COAST_BRAKE := 40.0
 const MAX_SPEED := 19.4                      # m/s, 70 km/h
 const REVERSE_SPEED_LIMIT := MAX_SPEED * 0.3
 # 회전 반경 9–11 m 를 내는 최대 조향각. 자전거 모델 R = L / tan(δ) 에
@@ -91,6 +96,8 @@ func apply_axes(steer_axis: float, throttle_axis: float, brake_axis: float,
 
 	engine_force = -ENGINE_FORCE * throttle_axis if speed < MAX_SPEED else 0.0
 	brake = BRAKE_FORCE * brake_axis
+	if throttle_axis <= 0.0:
+		brake = maxf(brake, COAST_BRAKE)
 
 func respawn_to(point: Vector3, look_target: Vector3) -> void:
 	"""끼거나 뒤집혔을 때 경로 위로 되돌린다. 벌점은 없다 — 5번이 정한다."""
