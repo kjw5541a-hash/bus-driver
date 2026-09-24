@@ -28,6 +28,31 @@ func _ready() -> void:
 		"신호 반폭이 없다: %s" % str(signal_entry))
 	ok(signal_entry.has("camera"), "신호 카메라 필드가 없다: %s" % str(signal_entry))
 
+	# 정차 목표점은 노선 위의 점이다. OSM 정류장 노드는 인도에 있어서
+	# 그대로 쓰면 차선에 제대로 세워도 걸어오는 시간이 붙는다.
+	ok(data.stop_targets.size() == data.stops.size(),
+		"정차 목표점이 %d 개인데 정류장은 %d 곳이다"
+		% [data.stop_targets.size(), data.stops.size()])
+	var worst := 0.0
+	for index in range(data.stops.size()):
+		var target: Vector3 = data.stop_targets[index]
+		# 목표점은 경로점이 아니라 선분 위에 있다. 직선 구간은 경로점이
+		# 드물어 가장 가까운 경로점까지도 수십 m 가 나온다.
+		var best := INF
+		for segment in range(data.route.size() - 1):
+			var closest := Geometry3D.get_closest_point_to_segment(target,
+				data.route[segment], data.route[segment + 1])
+			best = minf(best, target.distance_to(closest))
+		worst = maxf(worst, best)
+	ok(worst < 0.5, "정차 목표점이 노선 선분에서 %.2f m 떨어졌다" % worst)
+
+	# progress_m 이 노선 길이를 넘으면 마지막 점으로 자른다.
+	var last: Vector3 = data.route[data.route.size() - 1]
+	ok(data.point_at_progress(1.0e9).distance_to(last) < 0.01,
+		"노선 끝을 넘는 진행거리를 자르지 않았다")
+	ok(data.point_at_progress(-5.0).distance_to(data.route[0]) < 0.01,
+		"음수 진행거리를 0 으로 자르지 않았다")
+
 	# 경로는 (x, z) 평면이다. y 는 전부 0 이어야 한다.
 	for point in data.route:
 		if point.y != 0.0:
