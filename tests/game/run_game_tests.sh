@@ -23,7 +23,7 @@ fi
 if [ $# -gt 0 ]; then
 	scenes=("$@")
 else
-	scenes=(test_route_data test_city test_input test_turn_radius test_nav_line test_traffic_signal test_violation drive_smoke)
+	scenes=(test_route_data test_city test_input test_turn_radius test_nav_line test_traffic_signal test_violation test_camera_view drive_smoke)
 fi
 
 "$GODOT_BIN" --headless --import >/dev/null 2>&1 || true
