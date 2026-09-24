@@ -20,7 +20,7 @@
 - 새 스크립트의 `.gd.uid` 는 러너의 `--import` 가 만든다. 스크립트와 같이 커밋한다.
 - Godot 은 파싱 에러에도 0 으로 끝난다. 통과 판정은 러너가 `TEST_OK` 로 한다.
 - 구간 상수: `SECTION_STOPS = 10`, `SECTION_MIN_STOPS = 5`, `LEAD_IN_M = 60.0`, `SECTION_SIGNAL_M = 30.0`.
-- 마감 상수: `BASE_SPEED_MPS = 30 km/h`, `WALK_GUESS_M = 3.0`, 10 초 단위 올림.
+- 마감 상수: `BASE_SPEED_MPS = 32 km/h`, `WALK_GUESS_M = 3.0`, 10 초 단위 올림.
 - 점수표: 완주 +1000, 승객 +20, 일찍 초당 +2, 초과 초당 −5, 위반 −50, 카메라 −150, 놓친 정류장 −100, 못 태운 승객 −10, 리스폰 −30, 별 3 감점 한도 150.
 
 ## 파일 구조
@@ -320,12 +320,12 @@ func _test_deadline() -> void:
 	# 0 명이 4/12, 1~8 명이 각 1/12. n 명이면 3 + 3/1.2 + 2n 초.
 	equal_approx(Timetable.expected_dwell(), 116.0 / 12.0, 0.001, "기대 정차 시간")
 	equal_approx(Timetable.signal_wait(), 8.25, 0.001, "기대 신호 대기")
-	# 1000 m 직선, 정류장 3, 신호 2: 120 + 29 + 16.5 = 165.5 -> 170.
+	# 1000 m 직선, 정류장 3, 신호 2: 112.5 + 29 + 16.5 = 158 -> 160.
 	var data := RouteData.new()
 	data.route = PackedVector3Array([Vector3.ZERO, Vector3(1000.0, 0.0, 0.0)])
 	data.stops = [{}, {}, {}]
 	data.signals = [{}, {}]
-	equal_approx(Timetable.deadline_for(data), 170.0, 0.001, "마감")
+	equal_approx(Timetable.deadline_for(data), 160.0, 0.001, "마감")
 	ok(Timetable.format_mmss(462) == "7:42", "포맷: %s" % Timetable.format_mmss(462))
 	ok(Timetable.format_mmss(60) == "1:00", "포맷: %s" % Timetable.format_mmss(60))
 	ok(Timetable.format_mmss(5) == "0:05", "포맷: %s" % Timetable.format_mmss(5))
@@ -356,7 +356,7 @@ class_name Timetable
 # 구워도, 규칙 숫자를 바꿔도 알아서 따라온다. 난이도는 BASE_SPEED_MPS 하나로
 # 조절한다.
 
-const BASE_SPEED_MPS := 30.0 / 3.6   # 정차·신호를 뺀 순수 주행 평균
+const BASE_SPEED_MPS := 32.0 / 3.6   # 정차·신호를 뺀 순수 주행 평균. 30 이면 100번 긴 구간이 16 분을 넘는다
 const WALK_GUESS_M := 3.0            # 차선에 제대로 섰을 때 걸어오는 거리
 const ROUND_S := 10.0
 
@@ -1029,7 +1029,7 @@ Run: `godot res://scenes/menu.tscn` (창 모드). seoul-654 를 눌러 구간 8 
 
 ```markdown
 노선은 정류장 10곳 단위 구간으로 나뉜다. 메뉴에서 노선을 누르면 구간 목록과
-마감이 뜬다. 마감은 구간 길이를 30 km/h 로 달리는 시간에 정류장당 기대 정차
+마감이 뜬다. 마감은 구간 길이를 32 km/h 로 달리는 시간에 정류장당 기대 정차
 시간(약 10 초)과 신호당 기대 대기(8.25 초)를 더해 자동으로 정한다. 오른쪽 위에
 남은 시간이 줄고, 넘기면 초과 시간이 붉게 올라간다. 끝 정류장에서 승하차를 마치면
 결과 화면이 뜬다 — 완주 1000 점에 태운 승객 1명당 +20, 일찍 도착 초당 +2, 초과

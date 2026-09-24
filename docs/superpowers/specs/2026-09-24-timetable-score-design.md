@@ -91,7 +91,7 @@
 `Timetable` (`scripts/timetable.gd`, RefCounted, static 함수만)
 
 ```
-주행 = 경로 길이 ÷ BASE_SPEED_MPS            (30 km/h = 8.33 m/s)
+주행 = 경로 길이 ÷ BASE_SPEED_MPS            (32 km/h = 8.89 m/s)
 정차 = 정류장 수 × expected_dwell()
 신호 = 신호 수 × SIGNAL_WAIT_S                (8.25 s)
 마감 = 올림(주행 + 정차 + 신호, 10 s 단위)

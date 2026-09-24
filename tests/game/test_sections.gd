@@ -5,6 +5,7 @@ func _ready() -> void:
 	_test_bounds()
 	_test_slice()
 	_test_real_routes()
+	_test_deadline()
 	finish()
 
 # 정류장 n 곳을 +X 축 직선 위 100 m 간격(50, 150, ...)에 놓는다.
@@ -73,3 +74,26 @@ func _test_real_routes() -> void:
 				var point := Vector3(float(entry["x"]), 0.0, float(entry["z"]))
 				ok(part.distance_to_route(point) <= RouteData.SECTION_SIGNAL_M + 0.01,
 					"%s 구간 %d 신호가 경로에서 멀다" % [route_id, index])
+
+func _test_deadline() -> void:
+	# 0 명이 4/12, 1~8 명이 각 1/12. n 명이면 3 + 3/1.2 + 2n 초.
+	equal_approx(Timetable.expected_dwell(), 116.0 / 12.0, 0.001, "기대 정차 시간")
+	equal_approx(Timetable.signal_wait(), 8.25, 0.001, "기대 신호 대기")
+	# 1000 m 직선, 정류장 3, 신호 2: 112.5 + 29 + 16.5 = 158 -> 160.
+	var data := RouteData.new()
+	data.route = PackedVector3Array([Vector3.ZERO, Vector3(1000.0, 0.0, 0.0)])
+	data.stops = [{}, {}, {}]
+	data.signals = [{}, {}]
+	equal_approx(Timetable.deadline_for(data), 160.0, 0.001, "마감")
+	ok(Timetable.format_mmss(462) == "7:42", "포맷: %s" % Timetable.format_mmss(462))
+	ok(Timetable.format_mmss(60) == "1:00", "포맷: %s" % Timetable.format_mmss(60))
+	ok(Timetable.format_mmss(5) == "0:05", "포맷: %s" % Timetable.format_mmss(5))
+	# 실데이터 모든 구간이 5~16 분이다.
+	for route_id in ["seoul-100", "seoul-654", "seoul-seodaemun03"]:
+		var route := RouteData.load_route(route_id)
+		if route == null:
+			continue
+		for index in route.sections().size():
+			var deadline := Timetable.deadline_for(route.slice(index))
+			ok(deadline >= 300.0 and deadline <= 960.0,
+				"%s 구간 %d 마감 %.0f 초" % [route_id, index, deadline])
