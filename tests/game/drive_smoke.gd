@@ -15,6 +15,7 @@ var driven := 0.0
 var guide_index := 0
 var stuck := 0.0
 var done := false
+var start_distances: Array = []
 
 func _ready() -> void:
 	var scene: PackedScene = load("res://scenes/drive.tscn")
@@ -26,6 +27,12 @@ func _ready() -> void:
 	# drive.gd 는 매 프레임 입력을 읽어 버스에 먹인다. 헤드리스에서는 입력이
 	# 전부 0 이라, 그대로 두면 이 테스트가 넣는 축을 매 프레임 덮어쓴다.
 	drive.set_physics_process(false)
+	# 이 테스트의 자율주행은 앞차를 모른다. 차에 막히거나 사고 정지에 걸리지
+	# 않게 충돌만 끈다. 차는 계속 달린다.
+	if drive.traffic != null:
+		for car in drive.traffic.cars:
+			car.body.collision_layer = 0
+		start_distances = drive.traffic.cars.map(func(car) -> float: return car.distance)
 
 	ok(drive.data != null, "노선 데이터가 없다")
 	ok(drive.city != null and drive.city.chunk_nodes.size() > 0, "도시가 비었다")
@@ -124,6 +131,13 @@ func _report() -> void:
 	ok(drive.signal_field != null, "SignalField 가 없다")
 	ok(drive.watch != null, "ViolationWatch 가 없다")
 	ok(drive.traffic != null, "Traffic 이 없다")
+	ok(drive.crash != null, "CrashWatch 가 없다")
+	if drive.traffic != null:
+		var moved := false
+		for index in drive.traffic.cars.size():
+			if absf(drive.traffic.cars[index].distance - start_distances[index]) > 1.0:
+				moved = true
+		ok(moved, "교통 차량이 하나도 안 움직였다")
 	ok(drive.signal_field.head_count == drive.data.signals.size() * 4,
 		"기둥이 %d 개인데 신호는 %d 개다"
 		% [drive.signal_field.head_count, drive.data.signals.size()])

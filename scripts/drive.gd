@@ -14,6 +14,7 @@ var camera: ChaseCamera
 var touch: TouchControls
 var signal_field: SignalField
 var traffic: Traffic
+var crash: CrashWatch
 var watch: ViolationWatch
 var hud: ViolationHud
 var stop_field: StopField
@@ -103,6 +104,12 @@ func _ready() -> void:
 	boarding.boarding_finished.connect(boarding_hud.on_boarding_finished)
 	boarding.stop_missed.connect(boarding_hud.on_stop_missed)
 
+	crash = CrashWatch.new()
+	crash.build(bus, traffic)
+	crash.boarding = boarding
+	add_child(crash)
+	crash.crashed.connect(boarding_hud.on_crashed)
+
 	clock = RunClock.new()
 	clock.start(Timetable.deadline_for(data), data.stops.size() - 1)
 	add_child(clock)
@@ -142,7 +149,7 @@ func section_from_args() -> int:
 func _on_finished() -> void:
 	var card := ScoreCard.tally(clock.elapsed_s, clock.deadline_s,
 		clock.boarded_total, watch.violations, watch.camera_violations,
-		boarding.missed, boarding.left_behind, clock.respawns)
+		boarding.missed, boarding.left_behind, clock.respawns, crash.crashes)
 	var title := "%s · 구간 %d/%d" % [data.display_name, data.section + 1, data.section_count]
 	result.show_result(card, title, data.section < data.section_count - 1)
 
@@ -166,6 +173,10 @@ func _physics_process(delta: float) -> void:
 		bus.apply_axes(0.0, 0.0, 1.0, false, delta)
 		if Input.is_key_pressed(KEY_R):
 			get_tree().reload_current_scene()
+		return
+	if crash != null and crash.is_stopping:
+		# 사고. 정해진 시간 동안 브레이크만 건다. 시계는 흐른다.
+		bus.apply_axes(0.0, 0.0, 1.0, false, delta)
 		return
 	if boarding != null and boarding.is_boarding:
 		# 문이 열려 있다. 브레이크만 걸어 버스를 붙잡는다. 승하차 시간을

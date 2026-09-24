@@ -17,6 +17,8 @@ var _onboard_label: Label
 var _progress: ProgressBar
 var _miss_label: Label
 var _miss_left := 0.0
+var _crash_label: Label
+var _crash_left := 0.0
 var _bell_label: Label
 var _chime: AudioStreamPlayer
 
@@ -30,6 +32,14 @@ func _ready() -> void:
 	box.offset_top = 12.0
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(box)
+
+	_crash_label = Label.new()
+	_crash_label.text = "사고 — %d초 정차" % int(CrashWatch.CRASH_STOP_S)
+	_crash_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_crash_label.add_theme_font_size_override("font_size", 22)
+	_crash_label.add_theme_color_override("font_color", Color(1.0, 0.35, 0.3))
+	_crash_label.visible = false
+	box.add_child(_crash_label)
 
 	_next_label = Label.new()
 	_next_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -119,6 +129,10 @@ func on_boarding_finished(boarded: int, alighted: int) -> void:
 	_progress.visible = false
 	_onboard_label.text = "탄 사람 %d · 내린 사람 %d" % [boarded, alighted]
 
+func on_crashed() -> void:
+	_crash_label.visible = true
+	_crash_left = CrashWatch.CRASH_STOP_S
+
 func on_stop_missed(stop_index: int) -> void:
 	_miss_label.text = "%s 통과" % _name_of(stop_index)
 	_miss_label.visible = true
@@ -130,6 +144,9 @@ func _name_of(stop_index: int) -> String:
 	return str(_stops[stop_index].get("name", ""))
 
 func _process(delta: float) -> void:
+	if _crash_left > 0.0:
+		_crash_left = maxf(_crash_left - delta, 0.0)
+		_crash_label.visible = _crash_left > 0.0
 	if _miss_left <= 0.0:
 		return
 	_miss_left = maxf(_miss_left - delta, 0.0)

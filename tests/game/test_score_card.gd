@@ -24,4 +24,8 @@ func _ready() -> void:
 	ok(ScoreCard.tally(600.0, 600.0, 0, 3, 0, 0, 1, 0).stars == 2, "감점 160 이면 별 2")
 	# 일찍 도착 가산은 감점 한도 계산에 안 들어간다.
 	ok(ScoreCard.tally(500.0, 600.0, 0, 3, 0, 0, 1, 0).stars == 2, "시간 가산이 감점을 덮었다")
+	# 사고 1 회 -200. 감점 한도 150 을 넘으니 별 3 은 없다.
+	card = ScoreCard.tally(600.0, 600.0, 0, 0, 0, 0, 0, 0, 1)
+	ok(card.total == 800, "사고 %d" % card.total)
+	ok(card.stars == 2, "사고 1 회인데 별 %d" % card.stars)
 	finish()

@@ -15,6 +15,7 @@ const CAMERA_VIOLATION := -150
 const MISSED_STOP := -100
 const LEFT_BEHIND := -10
 const RESPAWN := -30
+const CRASH := -200
 const THREE_STAR_PENALTY := 150   # 시간 항목을 뺀 감점 합이 이 이하면 별 3
 
 var lines: Array = []
@@ -24,7 +25,7 @@ var on_time := true
 
 static func tally(elapsed_s: float, deadline_s: float, boarded: int,
 		violations: int, camera_violations: int, missed: int,
-		left_behind: int, respawns: int) -> ScoreCard:
+		left_behind: int, respawns: int, crashes: int = 0) -> ScoreCard:
 	var card := ScoreCard.new()
 	card._add("완주", 1, FINISH_POINTS)
 	card._add("태운 승객", boarded, PER_PASSENGER)
@@ -39,6 +40,7 @@ static func tally(elapsed_s: float, deadline_s: float, boarded: int,
 	penalty += card._add("놓친 정류장", missed, MISSED_STOP)
 	penalty += card._add("못 태운 승객", left_behind, LEFT_BEHIND)
 	penalty += card._add("리스폰", respawns, RESPAWN)
+	penalty += card._add("사고", crashes, CRASH)
 	if not card.on_time:
 		card.stars = 1
 	elif -penalty <= THREE_STAR_PENALTY:
