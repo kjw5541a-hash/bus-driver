@@ -13,7 +13,7 @@ signal violation(index: int, by_camera: bool)
 signal busted
 
 var bus: Node3D
-var patrol: PatrolCars
+var traffic: Traffic
 
 var violations := 0
 var camera_violations := 0
@@ -87,6 +87,6 @@ func _on_enter(index: int, entry: Dictionary, heading: float, t: float) -> void:
 		camera_violations += 1
 	violation.emit(index, by_camera)
 	# 카메라는 과태료지 현장 제지가 아니다. 주행을 멈추는 것은 경찰뿐이다.
-	if patrol != null and patrol.sees(bus.global_position):
+	if traffic != null and traffic.police_sees(bus.global_position):
 		is_busted = true
 		busted.emit()

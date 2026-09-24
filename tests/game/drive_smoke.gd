@@ -123,7 +123,7 @@ func _report() -> void:
 	# 신호등이 섰는지, 근거리 컬링이 실제로 도는지 본다.
 	ok(drive.signal_field != null, "SignalField 가 없다")
 	ok(drive.watch != null, "ViolationWatch 가 없다")
-	ok(drive.patrol != null, "PatrolCars 가 없다")
+	ok(drive.traffic != null, "Traffic 이 없다")
 	ok(drive.signal_field.head_count == drive.data.signals.size() * 4,
 		"기둥이 %d 개인데 신호는 %d 개다"
 		% [drive.signal_field.head_count, drive.data.signals.size()])

@@ -13,7 +13,7 @@ var input: BusInput
 var camera: ChaseCamera
 var touch: TouchControls
 var signal_field: SignalField
-var patrol: PatrolCars
+var traffic: Traffic
 var watch: ViolationWatch
 var hud: ViolationHud
 var stop_field: StopField
@@ -65,14 +65,14 @@ func _ready() -> void:
 	signal_field.target = bus
 	add_child(signal_field)
 
-	patrol = PatrolCars.new()
-	patrol.build(data.route)
-	add_child(patrol)
+	traffic = Traffic.new()
+	traffic.build(data, bus)
+	add_child(traffic)
 
 	watch = ViolationWatch.new()
 	watch.build(data.signals)
 	watch.bus = bus
-	watch.patrol = patrol
+	watch.traffic = traffic
 	add_child(watch)
 
 	hud = ViolationHud.new()

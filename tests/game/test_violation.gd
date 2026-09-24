@@ -1,56 +1,53 @@
 extends TestCase
-# 순찰 경찰차와 위반 판정. 가짜 신호 하나를 놓고 버스 대신 빈 Node3D 를
+# 경찰 시야와 위반 판정. 가짜 신호 하나를 놓고 버스 대신 빈 Node3D 를
 # 움직여 판정만 본다 — 물리를 끼우면 테스트가 느리고 불안정해진다.
 
 func _ready() -> void:
-	_test_patrol_follows_route()
-	_test_patrol_sight()
+	_test_police_sight()
 	await _test_red_light_is_a_violation()
 	await _test_green_light_is_not()
 	await _test_yellow_light_is_not()
 	await _test_counted_once()
 	await _test_camera_counts_separately()
-	await _test_patrol_busts()
+	await _test_police_busts()
 	TrafficSignal.time_override = -1.0
 	finish()
 
-func _test_patrol_follows_route() -> void:
-	var route := PackedVector3Array([
-		Vector3(0.0, 0.0, 0.0), Vector3(100.0, 0.0, 0.0),
-		Vector3(200.0, 0.0, 0.0), Vector3(300.0, 0.0, 0.0)])
-	var patrol := PatrolCars.new()
-	patrol.build(route)
-	add_child(patrol)
-	ok(patrol.cars.size() == PatrolCars.CAR_COUNT,
-		"경찰차가 %d 대다" % patrol.cars.size())
-	# 경로 위에 있어야 한다 — z 가 0 이고 x 가 0~300 사이.
-	for car in patrol.cars:
-		ok(absf(car.global_position.z) < 0.01,
-			"경찰차가 경로를 벗어났다: %s" % str(car.global_position))
-		ok(car.global_position.x >= -0.01 and car.global_position.x <= 300.01,
-			"경찰차가 경로 밖 x 에 있다: %f" % car.global_position.x)
-	# 두 대가 서로 다른 지점에서 출발한다.
-	ok(absf(patrol.cars[0].global_position.x - patrol.cars[1].global_position.x) > 10.0,
-		"경찰차 두 대가 겹쳐 있다")
-	patrol.queue_free()
+# 곧은 남북 노선 위 Traffic. 물리 처리를 끄고 테스트가 경찰차를 직접 놓는다.
+func _make_traffic() -> Traffic:
+	var data := RouteData.new()
+	data.route = PackedVector3Array([Vector3(0.0, 0.0, 1000.0), Vector3(0.0, 0.0, -1000.0)])
+	data.route_width = PackedFloat32Array([7.0, 7.0])
+	var traffic := Traffic.new()
+	traffic.build(data, null)
+	add_child(traffic)
+	traffic.set_physics_process(false)
+	# 경찰차 한 대만 남기고 나머지는 멀리 치운다. sync_to_physics 가 켜진 몸체는
+	# 옮긴 위치가 다음 물리 프레임에야 반영된다. 테스트는 바로 읽으려고 끈다.
+	var first := true
+	for car in traffic.cars:
+		car.body.sync_to_physics = false
+		if car.is_police and first:
+			first = false
+			continue
+		car.body.global_position = Vector3(0.0, 0.0, 100000.0)
+	return traffic
 
-func _test_patrol_sight() -> void:
-	var route := PackedVector3Array([
-		Vector3(0.0, 0.0, 0.0), Vector3(1000.0, 0.0, 0.0)])
-	var patrol := PatrolCars.new()
-	patrol.build(route)
-	add_child(patrol)
-	# 테스트가 위치와 방향을 직접 정한다. 0번만 남기고 나머지는 멀리 치운다.
-	var car: Node3D = patrol.cars[0]
-	car.global_position = Vector3.ZERO
-	car.look_at(Vector3(0.0, 0.0, -1.0), Vector3.UP)   # 북(-Z)을 본다
-	for index in range(1, patrol.cars.size()):
-		patrol.cars[index].global_position = Vector3(0.0, 0.0, 100000.0)
+func _police_body(traffic: Traffic) -> Node3D:
+	for car in traffic.cars:
+		if car.is_police:
+			return car.body
+	return null
 
-	ok(patrol.sees(Vector3(0.0, 0.0, -50.0)), "전방 50 m 를 못 본다")
-	ok(not patrol.sees(Vector3(0.0, 0.0, -200.0)), "전방 200 m 를 본다")
-	ok(not patrol.sees(Vector3(0.0, 0.0, 50.0)), "후방 50 m 를 본다")
-	patrol.queue_free()
+func _test_police_sight() -> void:
+	var traffic := _make_traffic()
+	var body := _police_body(traffic)
+	body.global_position = Vector3.ZERO
+	body.look_at(Vector3(0.0, 0.0, -1.0), Vector3.UP)   # 북(-Z)을 본다
+	ok(traffic.police_sees(Vector3(0.0, 0.0, -50.0)), "전방 50 m 를 못 본다")
+	ok(not traffic.police_sees(Vector3(0.0, 0.0, -200.0)), "전방 200 m 를 본다")
+	ok(not traffic.police_sees(Vector3(0.0, 0.0, 50.0)), "후방 50 m 를 본다")
+	traffic.queue_free()
 
 # 교차로 하나를 원점에 놓는다. 축 0 은 남북(방위 0), 축 1 은 동서(방위 90).
 # 반폭 10 m 라 정지선은 중심에서 12 m 다.
@@ -140,23 +137,18 @@ func _test_camera_counts_separately() -> void:
 	watch.queue_free()
 	made[1].queue_free()
 
-func _test_patrol_busts() -> void:
+func _test_police_busts() -> void:
 	var made := _make_watch(false, TrafficSignal.Phase.RED)
 	var watch: ViolationWatch = made[0]
 	var mover: Node3D = made[1]
-	var patrol := PatrolCars.new()
-	patrol.build(PackedVector3Array([Vector3(0.0, 0.0, -1000.0),
-		Vector3(0.0, 0.0, 1000.0)]))
-	add_child(patrol)
+	var traffic := _make_traffic()
 	# 경찰차를 교차로 남쪽 30 m 에 두고 북쪽(오는 버스 쪽)을 보게 한다.
-	patrol.set_physics_process(false)   # 테스트가 놓은 위치를 유지한다
-	patrol.cars[0].global_position = Vector3(0.0, 0.0, 30.0)
-	patrol.cars[0].look_at(Vector3(0.0, 0.0, -1.0), Vector3.UP)
-	for index in range(1, patrol.cars.size()):
-		patrol.cars[index].global_position = Vector3(0.0, 0.0, 100000.0)
-	watch.patrol = patrol
+	var body := _police_body(traffic)
+	body.global_position = Vector3(0.0, 0.0, 30.0)
+	body.look_at(Vector3(0.0, 0.0, -1.0), Vector3.UP)
+	watch.traffic = traffic
 	await _drive_through(mover)
 	ok(watch.is_busted, "경찰차 앞 위반인데 적발되지 않았다")
 	watch.queue_free()
 	mover.queue_free()
-	patrol.queue_free()
+	traffic.queue_free()
