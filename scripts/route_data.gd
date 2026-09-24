@@ -16,12 +16,14 @@ const SECTION_STOPS := 10
 const SECTION_MIN_STOPS := 5     # 이보다 짧은 꼬리는 앞 구간에 붙인다
 const LEAD_IN_M := 60.0          # 첫 정류장 앞 여유. 출발하자마자 서지 않게
 const SECTION_SIGNAL_M := 30.0   # 잘린 경로에서 이만큼 안의 신호만 남긴다
+const DEFAULT_ROAD_WIDTH_M := 7.0  # route_width 가 없는 옛 산출물
 
 var id := ""
 var display_name := ""
 var from_name := ""
 var to_name := ""
 var route: PackedVector3Array = []
+var route_width: PackedFloat32Array = []   # 경로점별 도로 폭. route 와 같은 길이
 var stops: Array = []
 var chunks: Array = []
 var signals: Array = []
@@ -49,6 +51,13 @@ static func load_route(route_id: String) -> RouteData:
 	for point in parsed.get("route", []):
 		# 산출물은 (x, z) 쌍이다. y 는 평지라 0 이다.
 		data.route.append(Vector3(point[0], 0.0, point[1]))
+	for width in parsed.get("route_width", []):
+		data.route_width.append(float(width))
+	if data.route_width.size() != data.route.size():
+		# 옛 산출물에는 폭이 없다. 기본 폭으로 채운다.
+		data.route_width = PackedFloat32Array()
+		data.route_width.resize(data.route.size())
+		data.route_width.fill(DEFAULT_ROAD_WIDTH_M)
 	data.stops = parsed.get("stops", [])
 	data.chunks = parsed.get("chunks", [])
 	# 구 버전 산출물에는 signals 가 없거나 axis_deg 가 빠져 있다. 비어 있으면
@@ -143,6 +152,9 @@ func slice(index: int) -> RouteData:
 	part.section = index
 	part.section_count = bounds.size()
 	part.route = _route_between(start_m, end_m)
+	# 손수 만든 RouteData(테스트)는 폭이 없다. 있을 때만 자른다.
+	if route_width.size() == route.size():
+		part.route_width = _widths_between(start_m, end_m)
 	for stop_index in range(range_of.x, range_of.y + 1):
 		var stop: Dictionary = stops[stop_index].duplicate()
 		stop["progress_m"] = float(stop.get("progress_m", 0.0)) - start_m
@@ -176,3 +188,23 @@ func _route_between(start_m: float, end_m: float) -> PackedVector3Array:
 			part.append(route[index])
 	part.append(point_at_progress(end_m))
 	return part
+
+func _widths_between(start_m: float, end_m: float) -> PackedFloat32Array:
+	"""_route_between 과 같은 점들의 폭. 보간점은 가까운 원래 점의 폭."""
+	var part := PackedFloat32Array([_width_at_progress(start_m)])
+	var travelled := 0.0
+	for index in range(1, route.size()):
+		travelled += route[index - 1].distance_to(route[index])
+		if travelled > start_m and travelled < end_m:
+			part.append(route_width[index])
+	part.append(_width_at_progress(end_m))
+	return part
+
+func _width_at_progress(distance_m: float) -> float:
+	var travelled := 0.0
+	for index in range(1, route.size()):
+		var span := route[index - 1].distance_to(route[index])
+		if travelled + span >= distance_m:
+			return route_width[index - 1] if distance_m - travelled < span * 0.5 else route_width[index]
+		travelled += span
+	return route_width[route_width.size() - 1]

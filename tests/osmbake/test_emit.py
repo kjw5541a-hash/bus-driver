@@ -39,6 +39,7 @@ class TestWriteRouteJson(unittest.TestCase):
 
     def _write(self, **overrides):
         kwargs = dict(origin=(37.5, 127.0), route_xz=[(0.0, 0.0), (10.0, 0.0)],
+                      route_width=[7.0, 7.0],
                       stops=self.stops, signals=[],
                       chunks=[{"name": "chunk_0_0", "min": [0.0, 0.0], "max": [10.0, 0.0]}],
                       baked_at="2026-09-22")
@@ -55,9 +56,18 @@ class TestWriteRouteJson(unittest.TestCase):
         self._write()
         payload = json.loads(self.path.read_text(encoding="utf-8"))
         for key in ("id", "name", "from", "to", "origin", "attribution",
-                    "osm_relation", "baked_at", "route", "stops", "signals",
-                    "chunks"):
+                    "osm_relation", "baked_at", "route", "route_width", "stops",
+                    "signals", "chunks"):
             self.assertIn(key, payload)
+
+    def test_route_width_는_route_와_길이가_같고_반올림된다(self):
+        payload = self._write(route_width=[7.123, 15.0])
+        self.assertEqual(payload["route_width"], [7.12, 15.0])
+        self.assertEqual(len(payload["route_width"]), len(payload["route"]))
+
+    def test_route_width_길이가_다르면_거부한다(self):
+        with self.assertRaises(ValueError):
+            self._write(route_width=[7.0])
 
     def test_정류장은_진행도_오름차순으로_저장된다(self):
         self._write(stops=list(reversed(self.stops)))

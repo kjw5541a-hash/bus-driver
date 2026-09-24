@@ -74,4 +74,12 @@ func _ready() -> void:
 	ok(RouteData.list_route_ids().size() >= 3,
 		"노선 목록이 %d 개다" % RouteData.list_route_ids().size())
 
+	# 경로점별 도로 폭. 마주 오는 차선이 이것으로 반대편 차선 중앙을 잡는다.
+	ok(data.route_width.size() == data.route.size(),
+		"route_width %d 개, route %d 개" % [data.route_width.size(), data.route.size()])
+	ok(data.route_width[0] >= 3.0, "도로 폭이 이상하다: %.2f" % data.route_width[0])
+	var part := data.slice(0)
+	ok(part.route_width.size() == part.route.size(),
+		"잘린 뒤 route_width %d 개, route %d 개"
+		% [part.route_width.size(), part.route.size()])
 	finish()

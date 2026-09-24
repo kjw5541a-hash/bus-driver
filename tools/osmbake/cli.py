@@ -166,7 +166,8 @@ def bake(route_id: str, *, cache_dir: Path = CACHE_DIR, out_dir: Path = OUT_DIR,
     write_glb(out_dir / f"route_{route_id}.glb", chunks)
     payload = write_route_json(
         out_dir / f"route_{route_id}.json", spec,
-        origin=origin, route_xz=drive_xz, stops=stops, signals=signals,
+        origin=origin, route_xz=drive_xz, route_width=widths, stops=stops,
+        signals=signals,
         chunks=[{"name": name, **_chunk_bounds(surfaces)}
                for name, surfaces in chunks.items()],
         baked_at=baked_at)
