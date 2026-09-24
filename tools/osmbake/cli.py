@@ -42,22 +42,32 @@ def build_queries(spec: RouteSpec) -> tuple[str, str]:
 
 
 def find_terminal_node(graph, stop_nodes: list[dict], name: str,
-                       *, incoming: bool = False) -> int | None:
+                       *, incoming: bool = False,
+                       preferred_ways: frozenset[int] = frozenset()) -> int | None:
     """기점/종점 정류장 이름에 가장 가까운 도로 노드.
 
     graph.coords 에는 엣지가 한쪽으로만 붙은 노드가 들어 있다(일방통행의
     끝점 등). A* 의 출발점은 나가는 엣지가, 도착점은 들어오는 엣지가 없으면
     탐색이 무조건 실패한다. 실제로 100번·654번이 출발점에서 막혔다.
     incoming=True 면 도착점용으로 들어오는 엣지가 있는 노드만 본다.
+
+    preferred_ways(노선 멤버 도로)에 붙은 노드가 있으면 그중에서만 고른다.
+    가장 가까운 노드만 보면 정류장 뒤 골목이 잡힌다. 654번이 그렇게 기점에서
+    490 m 를 폭 4~5 m 주택가 골목으로 돌아 버스가 건물 사이에 끼었다.
     """
     matches = [n for n in stop_nodes if n.get("tags", {}).get("name") == name]
-    candidates = ({edge.end for edges in graph.adj.values() for edge in edges}
-                  if incoming else set(graph.adj))
+    edges = [edge for edge_list in graph.adj.values() for edge in edge_list]
+    def ends_of(pool):
+        return {edge.end if incoming else edge.start for edge in pool}
+    candidates = ends_of(edge for edge in edges if edge.way_id in preferred_ways)
+    if not candidates:
+        candidates = ends_of(edges)
     if not matches or not candidates:
         return None
-    target = (matches[0]["lat"], matches[0]["lon"])
+    targets = [(match["lat"], match["lon"]) for match in matches]
     return min(candidates,
-               key=lambda node_id: haversine(graph.coords[node_id], target))
+               key=lambda node_id: min(haversine(graph.coords[node_id], target)
+                                       for target in targets))
 
 
 def _chunk_bounds(surfaces: dict) -> dict:
@@ -102,8 +112,10 @@ def bake(route_id: str, *, cache_dir: Path = CACHE_DIR, out_dir: Path = OUT_DIR,
     stop_nodes = [e for e in elements if e.get("type") == "node"
                   and e.get("tags", {}).get("highway") == "bus_stop"]
     from_anchor, to_anchor = spec.anchors()
-    start = find_terminal_node(graph, stop_nodes, from_anchor)
-    goal = find_terminal_node(graph, stop_nodes, to_anchor, incoming=True)
+    start = find_terminal_node(graph, stop_nodes, from_anchor,
+                               preferred_ways=member_way_ids)
+    goal = find_terminal_node(graph, stop_nodes, to_anchor, incoming=True,
+                              preferred_ways=member_way_ids)
     if start is None or goal is None:
         raise RuntimeError(
             f"{route_id}: 기점/종점 정류장을 찾지 못했다 "
