@@ -51,6 +51,11 @@ godot
 왕복하는 순찰 경찰차 시야 안에서 위반하면 적발되어 주행이 끝난다. 이때 `R` 로 다시
 시작한다.
 
+정류장에는 대기 승객이 서 있다. 정류장 앞 15 m 안에서 멈추면 승하차가 시작되고
+그동안 버스는 움직이지 않는다. 걸리는 시간은 타는 사람과 내리는 사람 수, 그리고
+정류장에서 얼마나 떨어져 섰는지로 달라진다. 탈 사람도 내릴 사람도 없는 정류장은
+그냥 지나가면 된다. 대기 인원은 매 플레이 새로 정해진다.
+
 ## 테스트
 
 ```bash
@@ -77,3 +82,5 @@ godot res://tests/game/measure_fps.tscn -- --route=seoul-100
 - 구현 계획: `docs/superpowers/plans/2026-09-23-bus-physics-input.md`
 - 설계: `docs/superpowers/specs/2026-09-23-signals-violations-design.md`
 - 구현 계획: `docs/superpowers/plans/2026-09-23-signals-violations.md`
+- 설계: `docs/superpowers/specs/2026-09-24-stops-passengers-design.md`
+- 구현 계획: `docs/superpowers/plans/2026-09-24-stops-passengers.md`
