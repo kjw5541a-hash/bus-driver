@@ -64,9 +64,11 @@ class TestBake(unittest.TestCase):
                          {"lat": 37.5006, "lon": 126.9402},
                          {"lat": 37.5004, "lon": 126.9402}],
             "tags": {"building": "yes", "building:levels": "5"}}]
-        stops = [stop(90, 37.50003, 126.94005, "홍은2동주민센터"),
-                 stop(91, 37.50003, 126.94300, "중간 정류장"),
-                 stop(92, 37.50003, 126.94398, "신촌전철역")]
+        # 경로는 정동쪽으로 간다. 정류장은 진행 방향 우측, 곧 남쪽에
+        # 둔다 — 북쪽 정류장은 반대 방향 노선의 것이라 걸러진다.
+        stops = [stop(90, 37.49997, 126.94005, "홍은2동주민센터"),
+                 stop(91, 37.49997, 126.94300, "중간 정류장"),
+                 stop(92, 37.49997, 126.94398, "신촌전철역")]
         (self.cache_dir / "seoul-seodaemun03_corridor.json").write_text(
             json.dumps({"elements": route_ways + buildings + stops}),
             encoding="utf-8")

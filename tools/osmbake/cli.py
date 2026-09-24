@@ -18,7 +18,8 @@ from .glb import write_glb
 from .graph import DRIVABLE_HIGHWAYS, build_graph
 from .overpass import fetch
 from .routes import ROUTES, RouteSpec
-from .routing import astar, path_latlon, project_path, snap_stops
+from .routing import (astar, offset_right, path_latlon, path_widths,
+                      progress_on_path, project_path, snap_stops)
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 CACHE_DIR = REPO_ROOT / "data" / "osm_cache"
@@ -112,7 +113,17 @@ def bake(route_id: str, *, cache_dir: Path = CACHE_DIR, out_dir: Path = OUT_DIR,
         raise RuntimeError(f"{route_id}: 기점에서 종점까지 경로가 없다")
     route_latlon = path_latlon(graph, edges)
     route_xz = project_path(route_latlon, projector)
-    stops = snap_stops(route_xz, stop_nodes, projector)
+    widths = path_widths(graph, edges)
+    # 주행선은 도로 중심선이 아니라 우측 차선군의 한가운데다. 중심선을 그대로
+    # 달리면 중앙선 위를 타서 왕복 도로로 보이지 않는다. 우측 절반의 중앙은
+    # 중심선에서 폭의 1/4 이다 — 왕복 2차선(7 m)이면 1.75 m, 6차선(20 m)이면 5 m.
+    drive_xz = offset_right(route_xz, [width * 0.25 for width in widths])
+    stops = snap_stops(route_xz, stop_nodes, projector, road_widths=widths)
+    # 정류장 좌표는 중심선 기준으로 잡았다. 진행도는 버스가 실제로 달리는
+    # 주행선에서 다시 재야 정차 목표점이 맞는다.
+    for stop in stops:
+        stop["progress_m"] = round(
+            progress_on_path(drive_xz, (stop["x"], stop["z"])), 1)
 
     # 4. corridor
     near = corridor_mod.near_path(elements, route_xz, projector, radius_m)
@@ -142,7 +153,7 @@ def bake(route_id: str, *, cache_dir: Path = CACHE_DIR, out_dir: Path = OUT_DIR,
     write_glb(out_dir / f"route_{route_id}.glb", chunks)
     payload = write_route_json(
         out_dir / f"route_{route_id}.json", spec,
-        origin=origin, route_xz=route_xz, stops=stops, signals=signals,
+        origin=origin, route_xz=drive_xz, stops=stops, signals=signals,
         chunks=[{"name": name, **_chunk_bounds(surfaces)}
                for name, surfaces in chunks.items()],
         baked_at=baked_at)

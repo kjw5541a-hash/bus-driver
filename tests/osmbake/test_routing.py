@@ -3,7 +3,9 @@ import unittest
 
 from tools.osmbake.geo import Projector
 from tools.osmbake.graph import build_graph
-from tools.osmbake.routing import astar, path_latlon, project_path, snap_stops
+from tools.osmbake.routing import (astar, offset_right, path_latlon,
+                                   path_widths, progress_on_path,
+                                   project_path, snap_stops)
 
 
 def way(way_id, node_ids, coords, **tags):
@@ -174,3 +176,76 @@ class TestSnapStops(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestPathWidths(unittest.TestCase):
+    def test_점마다_도로_폭을_낸다(self):
+        graph = build_graph([
+            way(1, [10, 11], [(37.500, 127.000), (37.500, 127.001)],
+                highway="primary"),
+            way(2, [11, 12], [(37.500, 127.001), (37.500, 127.002)],
+                highway="residential"),
+        ])
+        edges = astar(graph, 10, 12)
+        widths = path_widths(graph, edges)
+        self.assertEqual(len(widths), len(path_latlon(graph, edges)))
+        self.assertEqual(widths[0], 20.0)    # primary
+        self.assertEqual(widths[1], 7.0)     # 만나는 점은 좁은 쪽
+        self.assertEqual(widths[-1], 7.0)    # residential
+
+
+class TestOffsetRight(unittest.TestCase):
+    def test_동쪽으로_갈_때_우측은_남쪽(self):
+        # x=동, z=남. 동쪽 진행의 우측은 +z 다.
+        path = [(0.0, 0.0), (100.0, 0.0), (200.0, 0.0)]
+        moved = offset_right(path, [5.0, 5.0, 5.0])
+        for (x, z), (ox, _oz) in zip(moved, path):
+            self.assertAlmostEqual(x, ox, places=6)
+            self.assertAlmostEqual(z, 5.0, places=6)
+
+    def test_북쪽으로_갈_때_우측은_동쪽(self):
+        path = [(0.0, 0.0), (0.0, -100.0)]
+        moved = offset_right(path, [3.0, 3.0])
+        for x, _z in moved:
+            self.assertAlmostEqual(x, 3.0, places=6)
+
+    def test_급커브_꼭짓점은_중심선에_둔다(self):
+        # 90도 우회전. 꼭짓점을 안쪽으로 밀면 회전 반경이 더 줄어든다.
+        path = [(0.0, 0.0), (100.0, 0.0), (100.0, 100.0)]
+        moved = offset_right(path, [4.0, 4.0, 4.0])
+        self.assertEqual(len(moved), len(path))
+        self.assertAlmostEqual(moved[1][0], 100.0, places=6)
+        self.assertAlmostEqual(moved[1][1], 0.0, places=6)
+
+
+class TestSidewalkStops(unittest.TestCase):
+    def setUp(self):
+        self.projector = Projector(37.500, 127.000)
+        # 정동쪽으로 뻗은 직선. 우측은 +z(남쪽)다.
+        self.path = project_path(
+            [(37.500, 127.000), (37.500, 127.001), (37.500, 127.002)],
+            self.projector)
+        # 도로 폭 20 m(primary). 반폭은 10 m 다.
+        self.widths = [20.0] * len(self.path)
+
+    def test_진행방향_좌측_정류장은_버린다(self):
+        # 북쪽(좌측) 정류장은 반대 방향 노선의 것이다.
+        stops = snap_stops(self.path,
+                           [stop_node(1, 37.50005, 127.0005, "반대편")],
+                           self.projector, road_widths=self.widths)
+        self.assertEqual(stops, [])
+
+    def test_우측_정류장을_차도_밖으로_옮긴다(self):
+        stops = snap_stops(self.path,
+                           [stop_node(1, 37.49995, 127.0005, "우측")],
+                           self.projector, road_widths=self.widths)
+        self.assertEqual(len(stops), 1)
+        # 경로에서 우측(+z)으로 반폭 10 m 밖, 곧 인도 위여야 한다.
+        self.assertGreater(stops[0]["z"], 10.0)
+
+
+class TestProgressOnPath(unittest.TestCase):
+    def test_옆으로_떨어진_점도_수선의_발로_잰다(self):
+        path = [(0.0, 0.0), (100.0, 0.0)]
+        self.assertAlmostEqual(progress_on_path(path, (30.0, 12.0)), 30.0,
+                               places=6)

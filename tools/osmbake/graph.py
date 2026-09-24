@@ -10,6 +10,7 @@ from collections import Counter
 from dataclasses import dataclass
 
 from .geo import haversine
+from .mesh import road_width
 
 DRIVABLE_HIGHWAYS = frozenset({
     "motorway", "trunk", "primary", "secondary", "tertiary",
@@ -28,6 +29,8 @@ class Edge:
     highway: str
     way_id: int
     bus_only: bool
+    # 차도 폭. 주행선을 우측 차선으로 미는 데 쓴다.
+    width: float = road_width({})
 
 
 class RoadGraph:
@@ -65,6 +68,7 @@ def build_graph(elements: list[dict]) -> RoadGraph:
         oneway = tags.get("oneway", "no")
         forward = oneway != "-1"
         backward = oneway not in ("yes", "true", "1")
+        width = road_width(tags)
         bus_only = (tags.get("highway") == "busway"
                     or (tags.get("access") == "no" and tags.get("bus") == "designated"))
 
@@ -84,8 +88,10 @@ def build_graph(elements: list[dict]) -> RoadGraph:
                          for i in range(len(chunk_pts) - 1))
             if forward:
                 graph.add_edge(Edge(chunk_ids[0], chunk_ids[-1], chunk_ids,
-                                    length, tags["highway"], w["id"], bus_only))
+                                    length, tags["highway"], w["id"], bus_only,
+                                    width))
             if backward:
                 graph.add_edge(Edge(chunk_ids[-1], chunk_ids[0], chunk_ids[::-1],
-                                    length, tags["highway"], w["id"], bus_only))
+                                    length, tags["highway"], w["id"], bus_only,
+                                    width))
     return graph
