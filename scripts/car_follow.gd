@@ -12,6 +12,9 @@ const BRAKE := 6.0            # m/s²
 # 목표 속도는 BRAKE 보다 약한 감속 곡선으로 잡는다. 곡선이 BRAKE 와 같으면
 # 프레임 단위 제한이 곡선을 한 박자 늦게 따라가 정지선을 조금 넘는다.
 const PLAN_BRAKE := BRAKE * 0.8
+# 정지선 바로 앞이 아니라 조금 앞을 노린다. 감속 곡선은 목표점에 점근하면서
+# 마지막 몇 mm 를 한 프레임에 넘어선다.
+const STOP_SHORT_M := 0.5
 const HEADWAY_S := 1.5
 const STANDSTILL_GAP_M := 6.0
 # 황색 앞에서 제동 곡선을 따라 줄이는 중에는 남은 거리와 제동거리가 거의 같다.
@@ -32,5 +35,5 @@ static func next_speed(speed: float, gap_m: float, stop_m: float,
 	if phase == TrafficSignal.Phase.YELLOW:
 		must_stop = stop_m + YELLOW_SLACK_M >= speed * speed / (2.0 * BRAKE)
 	if must_stop:
-		target = minf(target, sqrt(2.0 * PLAN_BRAKE * maxf(0.0, stop_m)))
+		target = minf(target, sqrt(2.0 * PLAN_BRAKE * maxf(0.0, stop_m - STOP_SHORT_M)))
 	return maxf(0.0, clampf(target, speed - BRAKE * delta, speed + ACCEL * delta))
