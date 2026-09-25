@@ -87,8 +87,9 @@ func _ready() -> void:
 	add_child(boarding)
 
 	stop_field = StopField.new()
-	stop_field.build(data.stops, boarding.plan)
+	stop_field.build(data, boarding.plan)
 	stop_field.target = bus
+	stop_field.boarding = boarding
 	add_child(stop_field)
 
 	boarding_hud = BoardingHud.new()

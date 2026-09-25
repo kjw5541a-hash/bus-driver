@@ -166,6 +166,8 @@ func _report() -> void:
 	ok(drive.stop_field.sign_count == drive.data.stops.size(),
 		"표지판이 %d 개인데 정류장은 %d 곳이다"
 		% [drive.stop_field.sign_count, drive.data.stops.size()])
+	ok(drive.stop_field.zone_count == drive.data.stops.size(),
+		"정차 구역 %d 개, 정류장 %d 곳" % [drive.stop_field.zone_count, drive.data.stops.size()])
 	ok(drive.stop_field.updated_count > 0, "정류장을 하나도 안 보였다")
 	ok(drive.stop_field.updated_count < drive.data.stops.size(),
 		"거리 컬링이 안 걸려 정류장 %d 곳을 전부 보였다"
