@@ -6,11 +6,12 @@ class_name PassengerPlan
 # 센다. 60 명이 각자 객체일 이유가 없다.
 
 const CAPACITY := 60              # 서울 저상버스 입석 포함
-const DOOR_S := 3.0               # 문 개폐. 승객이 0 명이어도 든다
+const DOOR_S := 2.0               # 문 개폐. 승객이 0 명이어도 든다
 # 1 인당 시간. 처음 1.2/0.8 초는 문 개폐 3 초와 걸어오는 시간에 묻혀 1 명과
 # 8 명이 체감상 차이가 없었다. 서울 시내버스 실측(카드 태그 포함 약 2 초)에
-# 맞춘다. 이제 1 명은 5 초, 8 명은 19 초다.
-const BOARD_S := 2.0              # 1 인 탑승. 교통카드 찍는 시간
+# 맞췄으나 플레이해 보니 너무 길었다. 1 초로 줄이고 걸어오는 동안 하차를 겹친다.
+# 걸어오는 시간이 없으면 1 명은 3 초, 8 명은 10 초다.
+const BOARD_S := 1.0              # 1 인 탑승. 교통카드 찍는 시간
 const ALIGHT_S := 1.0             # 1 인 하차
 const WALK_SPEED_MPS := 1.2
 # 대기 인원은 maxi(0, randi_range(WAITING_MIN, WAITING_MAX)) 다. 0 명이 1/3,
@@ -70,9 +71,10 @@ func walk_for(walk_distance_m: float, waiting_n: int) -> float:
 
 func dwell_for(board_n: int, alight_n: int, walk_distance_m: float,
 		waiting_n: int) -> float:
-	"""정차 시간. 탑승과 하차는 앞문·뒷문으로 동시에 이뤄진다."""
-	return DOOR_S + walk_for(walk_distance_m, waiting_n) \
-		+ maxf(board_n * BOARD_S, alight_n * ALIGHT_S)
+	"""정차 시간. 탑승과 하차는 앞문·뒷문으로 동시에 이뤄진다.
+	승객이 걸어오는 동안에도 뒷문 하차는 진행된다."""
+	return DOOR_S + maxf(walk_for(walk_distance_m, waiting_n) + board_n * BOARD_S,
+		alight_n * ALIGHT_S)
 
 static func progress(elapsed_s: float, board_n: int, alight_n: int,
 		walk_s: float) -> Vector2i:

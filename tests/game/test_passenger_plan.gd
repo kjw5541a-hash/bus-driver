@@ -103,6 +103,11 @@ func _test_dwell_formula() -> void:
 		PassengerPlan.DOOR_S + 12.0 / PassengerPlan.WALK_SPEED_MPS
 		+ 3.0 * PassengerPlan.BOARD_S, 0.001,
 		"걸어오는 시간")
+	# 걸어오는 동안 뒷문 하차는 이미 진행된다. 하차가 길면 걸어오는 시간은 묻힌다.
+	equal_approx(plan.dwell_for(1, 20, 1.2, 1),
+		PassengerPlan.DOOR_S + 20.0 * PassengerPlan.ALIGHT_S, 0.001,
+		"걸어오는 시간이 하차에 더해졌다")
+	equal_approx(PassengerPlan.BOARD_S, 1.0, 0.001, "1 인 탑승 시간")
 
 func _test_dwell_scales_with_count() -> void:
 	# 적으면 빨리, 많으면 느리게. 1 명과 8 명이 확실히 갈려야 한다.
