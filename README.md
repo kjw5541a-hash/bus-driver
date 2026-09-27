@@ -14,9 +14,14 @@
 ## 노선 굽기
 
 ```bash
-python3 -m tools.osmbake.cli list          # 정의된 노선 보기
-python3 -m tools.osmbake.cli bake seoul-100
+python3 -m venv .venv && .venv/bin/pip install -r requirements.txt   # 처음 한 번
+.venv/bin/python -m tools.osmbake.cli list          # 정의된 노선 보기
+.venv/bin/python -m tools.osmbake.cli bake seoul-100
+.venv/bin/python -m unittest discover -s tests -t .   # 굽기 도구 테스트
 ```
+
+도로·인도 면 연산에 shapely 를 쓴다. Homebrew Python 은 전역 설치를 막으므로
+저장소 `.venv` 에 깐다.
 
 `data/osm_cache/` 에 캐시가 있으면 네트워크를 타지 않는다. 최신 OSM 데이터로 다시
 구우려면 해당 캐시 파일을 지운다.
@@ -26,8 +31,9 @@ python3 -m tools.osmbake.cli bake seoul-100
 - `assets/routes/route_<id>.glb` — 도로·건물·차선 도색·인도 메쉬. 200 m 격자
   청크로 나뉜다. 도로 폭은 `lanes` 태그가 있으면 차선 수로, 없으면 등급별
   추정 테이블로 정한다(서울 실제 기준). 왕복 도로는 차선 수를 짝수로 맞춰
-  중앙선이 차선 경계에 온다. 인도는 교차로 둘레와 다른 도로 위를
-  비운다
+  중앙선이 차선 경계에 온다. 차도는 모두 한 면으로 합치고 교차점 둘레
+  오목한 모서리를 반경 6 m 원호로 메운다. 인도는 그 면 바깥 2.25 m 띠라 어떤
+  차도와도 겹치지 않고 모서리를 곡선으로 돈다
 - `assets/routes/route_<id>.json` — 경로 폴리라인, 정류장, 신호 후보, 청크 경계.
   경로 점마다 도로 폭·차선 수·일방통행 여부와 주행선 오프셋(바깥 차선 중심)도
   담는다

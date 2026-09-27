@@ -24,7 +24,7 @@ if [ $# -eq 0 ]; then
 	routes=()
 	while IFS= read -r line; do
 		routes+=("$line")
-	done < <(python3 -m tools.osmbake.cli list | cut -f1)
+	done < <(.venv/bin/python -m tools.osmbake.cli list | cut -f1)
 else
 	routes=("$@")
 fi
@@ -36,7 +36,7 @@ for route in "${routes[@]}"; do
 	echo "=== $route ==="
 	# set -e 아래에서 베이크가 실패하면 스크립트 전체가 죽어 나머지 노선을
 	# 아예 안 돈다. 노선 하나의 실패가 다른 노선의 검증을 막으면 안 된다.
-	if ! python3 -m tools.osmbake.cli bake "$route"; then
+	if ! .venv/bin/python -m tools.osmbake.cli bake "$route"; then
 		echo "$route: BAKE FAIL"
 		failed=1
 		continue

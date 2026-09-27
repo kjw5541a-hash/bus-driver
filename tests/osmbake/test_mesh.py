@@ -1,13 +1,13 @@
-"""도로 폭 추정과 도로 리본 메쉬."""
+"""도로 폭 추정과 건물·도색 메쉬."""
 import math
 import unittest
 
 from tools.osmbake.geo import METERS_PER_DEG_LAT, Projector
-from tools.osmbake.mesh import (MeshBuilder, build_buildings, build_roads,
+from tools.osmbake.mesh import (MeshBuilder, build_buildings,
                                  build_markings, building_height, lane_count,
-                                 build_sidewalks, outer_lane_offset, road_width,
+                                 outer_lane_offset, road_width,
                                  triangulate,
-                                 CURB_HEIGHT, MARKING_Y,
+                                 MARKING_Y,
                                  split_chunks)
 
 
@@ -84,80 +84,6 @@ def normal_vs_winding(builder):
                 v1[0] * v2[1] - v1[1] * v2[0])
         stored = builder.normals[a]
         yield sum(wind[k] * stored[k] for k in range(3))
-
-
-class TestBuildRoads(unittest.TestCase):
-    def setUp(self):
-        self.projector = Projector(37.500, 127.000)
-
-    def _way(self, coords, **tags):
-        tags.setdefault("highway", "primary")
-        return {"type": "way", "id": 1, "nodes": list(range(len(coords))),
-                "geometry": [{"lat": lat, "lon": lon} for lat, lon in coords],
-                "tags": tags}
-
-    def test_한_구간은_사각형_하나(self):
-        builder = build_roads(
-            [self._way([(37.500, 127.000), (37.500, 127.001)])], self.projector)
-        self.assertEqual(builder.triangle_count(), 2)
-
-    def test_저장_법선이_정점_순서와_같은_쪽이다(self):
-        builder = build_roads([self._way([(37.500, 127.000), (37.500, 127.001),
-                                          (37.501, 127.0015)])], self.projector)
-        for index, dot in enumerate(normal_vs_winding(builder)):
-            self.assertGreater(dot, 0, f"도로 삼각형 {index} 의 저장 법선이 뒤집혀 있다")
-
-    def test_꺾이는_점마다_패치를_덧댄다(self):
-        # 구간 2개(사각형 2개 = 삼각형 4개) + 가운데 패치 1개(삼각형 2개)
-        builder = build_roads(
-            [self._way([(37.500, 127.000), (37.500, 127.001), (37.501, 127.001)])],
-            self.projector)
-        self.assertEqual(builder.triangle_count(), 6)
-
-    def test_도로_메쉬는_전부_y_0_근처(self):
-        builder = build_roads(
-            [self._way([(37.500, 127.000), (37.500, 127.001)])], self.projector)
-        for _x, y, _z in builder.positions:
-            self.assertLessEqual(abs(y), 0.02)
-
-    def test_법선은_위를_향한다(self):
-        builder = build_roads(
-            [self._way([(37.500, 127.000), (37.500, 127.001)])], self.projector)
-        for normal in builder.normals:
-            self.assertEqual(normal, (0.0, 1.0, 0.0))
-
-    def test_길이가_0인_구간은_건너뛴다(self):
-        builder = build_roads(
-            [self._way([(37.500, 127.000), (37.500, 127.000)])], self.projector)
-        self.assertEqual(builder.triangle_count(), 0)
-
-    def test_리본_삼각형이_위를_향한다(self):
-        """리본의 모든 삼각형이 위를 향하는지 확인 (cross product y > 0)."""
-        builder = build_roads(
-            [self._way([(37.500, 127.000), (37.500, 127.001)])], self.projector)
-
-        for index, y in enumerate(facing_y(builder)):
-            self.assertGreater(y, 0, f"삼각형 {index} 가 아래를 향한다 (y={y})")
-
-    def test_꺾이는_경로의_패치_삼각형도_위를_향한다(self):
-        """꺾이는 점의 패치가 위를 향하는지 확인."""
-        builder = build_roads(
-            [self._way([(37.500, 127.000), (37.500, 127.001), (37.501, 127.001)])],
-            self.projector)
-
-        for index, y in enumerate(facing_y(builder)):
-            self.assertGreater(y, 0, f"삼각형 {index} 가 아래를 향한다 (y={y})")
-
-    def test_리본_양쪽_가장자리_간격이_도로_폭과_같다(self):
-        """동서 방향 직선에서 리본 너비(z_max - z_min)가 road_width 와 같은지 확인."""
-        way = self._way([(37.500, 127.000), (37.500, 127.001)], highway="primary")
-        builder = build_roads([way], self.projector)
-
-        z_coords = [pos[2] for pos in builder.positions]
-        z_width = max(z_coords) - min(z_coords)
-        road_wid = road_width(way["tags"])
-
-        self.assertAlmostEqual(z_width, road_wid, places=5)
 
 
 class TestBuildingHeight(unittest.TestCase):
@@ -430,82 +356,3 @@ class TestBuildMarkings(unittest.TestCase):
         self.assertEqual(ys, {MARKING_Y})
 
 
-class TestBuildSidewalks(unittest.TestCase):
-    def setUp(self):
-        self.projector = Projector(37.500, 127.000)
-
-    def _way(self, meters: float, way_id=1, nodes=None, **tags):
-        tags.setdefault("highway", "primary")
-        delta = meters / METERS_PER_DEG_LAT
-        coords = [(37.500, 127.000), (37.500 + delta, 127.000)]
-        return {"type": "way", "id": way_id,
-                "nodes": nodes if nodes is not None else [10 * way_id, 10 * way_id + 1],
-                "geometry": [{"lat": lat, "lon": lon} for lat, lon in coords],
-                "tags": tags}
-
-    def test_골목에는_인도가_없다(self):
-        builder = build_sidewalks([self._way(50.0, highway="service")],
-                                  self.projector)
-        self.assertEqual(builder.triangle_count(), 0)
-
-    def test_한_구간에_양쪽_윗면과_연석(self):
-        builder = build_sidewalks([self._way(50.0)], self.projector)
-        self.assertEqual(builder.triangle_count(), 8)
-
-    def test_윗면은_연석_높이에_있다(self):
-        builder = build_sidewalks([self._way(50.0)], self.projector)
-        ys = {round(p[1], 4) for p in builder.positions}
-        self.assertEqual(ys, {0.0, CURB_HEIGHT})
-
-    def test_감는_방향이_저장_법선과_맞는다(self):
-        builder = build_sidewalks([self._way(50.0)], self.projector)
-        for dot in normal_vs_winding(builder):
-            self.assertGreater(dot, 0)
-
-    def test_교차점_둘레는_비운다(self):
-        # 가운데 노드를 다른 way 와 공유시키면 그 둘레 (10 + 3) m 가 잘린다.
-        delta = 50.0 / METERS_PER_DEG_LAT
-        shared = {"type": "way", "id": 1, "nodes": [1, 2, 3],
-                  "geometry": [{"lat": 37.500, "lon": 127.000},
-                               {"lat": 37.500 + delta, "lon": 127.000},
-                               {"lat": 37.500 + 2 * delta, "lon": 127.000}],
-                  "tags": {"highway": "primary"}}
-        other = {"type": "way", "id": 2, "nodes": [2, 99],
-                 "geometry": [{"lat": 37.500 + delta, "lon": 127.000},
-                              {"lat": 37.500 + delta, "lon": 127.001}],
-                 "tags": {"highway": "service"}}
-        builder = build_sidewalks([shared, other], self.projector)
-        # 교차점은 원점에서 북쪽 50 m 지점. 그 ±13 m 안은 비어야 한다(경계는 제외).
-        near = [p for p in builder.positions if abs(p[2] - (-50.0)) < 12.9]
-        self.assertEqual(near, [])
-        self.assertGreater(builder.triangle_count(), 0)
-
-
-class TestSidewalkOverlap(unittest.TestCase):
-    """평행한 도로가 가까우면 그 사이에 인도를 깔지 않는다."""
-
-    def setUp(self):
-        self.projector = Projector(37.500, 127.000)
-
-    def _parallel(self, gap_m: float):
-        """동서로 나란히 달리는 primary 두 개. 간격은 위도로 준다."""
-        gap = gap_m / METERS_PER_DEG_LAT
-        ways = []
-        for index, lat in enumerate((37.500, 37.500 + gap)):
-            ways.append({"type": "way", "id": index + 1,
-                         "nodes": [10 * index, 10 * index + 1],
-                         "geometry": [{"lat": lat, "lon": 127.000},
-                                      {"lat": lat, "lon": 127.001}],
-                         "tags": {"highway": "primary"}})
-        return ways
-
-    def test_멀면_양쪽_다_깐다(self):
-        builder = build_sidewalks(self._parallel(60.0), self.projector)
-        self.assertEqual(builder.triangle_count(), 16)
-
-    def test_붙어_있으면_사이를_비운다(self):
-        # primary 두 개(각 폭 20 m)를 20 m 간격으로 두면 인도 중심선
-        # 11.25 m 가 상대 차도(10~30 m) 안에 들어간다.
-        builder = build_sidewalks(self._parallel(20.0), self.projector)
-        self.assertLess(builder.triangle_count(), 16)
-        self.assertGreater(builder.triangle_count(), 0)

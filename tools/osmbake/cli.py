@@ -12,6 +12,7 @@ from pathlib import Path
 
 from . import corridor as corridor_mod
 from . import mesh as mesh_mod
+from . import surface as surface_mod
 from .emit import write_route_json
 from .geo import Projector, haversine
 from .glb import write_glb
@@ -153,7 +154,8 @@ def bake(route_id: str, *, cache_dir: Path = CACHE_DIR, out_dir: Path = OUT_DIR,
     corridor_mod.place_poles(signals, roads, projector)
 
     # 5. mesh
-    road_chunks = mesh_mod.split_chunks(mesh_mod.build_roads(roads, projector))
+    road_builder, sidewalk_builder = surface_mod.build_surfaces(roads, projector)
+    road_chunks = mesh_mod.split_chunks(road_builder)
     building_chunks = mesh_mod.split_chunks(
         mesh_mod.build_buildings(buildings, projector))
     chunks: dict[str, dict[str, mesh_mod.MeshBuilder]] = {}
@@ -162,7 +164,7 @@ def bake(route_id: str, *, cache_dir: Path = CACHE_DIR, out_dir: Path = OUT_DIR,
     for name, builder in building_chunks.items():
         chunks.setdefault(name, {})["building"] = builder
     extra = dict(mesh_mod.build_markings(roads, projector))
-    extra["sidewalk"] = mesh_mod.build_sidewalks(roads, projector)
+    extra["sidewalk"] = sidewalk_builder
     for surface, builder in extra.items():
         for name, part in mesh_mod.split_chunks(builder).items():
             chunks.setdefault(name, {})[surface] = part
