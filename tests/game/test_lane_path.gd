@@ -12,6 +12,9 @@ func _ready() -> void:
 	var on := lane.project(Vector3(30.0, 5.0, 4.0))
 	equal_approx(on.x, 30.0, 0.001, "투영 누적 거리")
 	equal_approx(on.y, 4.0, 0.001, "투영 옆 거리 (높이는 무시)")
+	# 동쪽 진행의 오른쪽은 남(+Z). 북쪽 점은 음수다.
+	equal_approx(lane.project(Vector3(30.0, 0.0, -4.0)).y, -4.0, 0.001, "왼쪽은 음수")
+	ok(lane.index_at(24.0) == 0 and lane.index_at(26.0) == 1, "가까운 경로점 인덱스")
 
 	# 동쪽 진행의 왼쪽은 북(-Z). 폭 10 m 면 5 m 북쪽에서 서쪽으로 간다.
 	var oncoming := LanePath.make(LanePath.oncoming(route,
@@ -46,4 +49,22 @@ func _ready() -> void:
 	# 좁은 교차로도 30 m 는 확보한다.
 	equal_approx(LanePath.crossing(Vector3.ZERO, 0.0, 3.0, 0, 0.0).length_m(), 60.0,
 		0.001, "교차 차선 하한")
+
+	# 갈래 차선: 남쪽 갈래(교차로로 북진해 들어옴)에서 북쪽 갈래(나감)로.
+	# 폭 15 m 면 4차선, 바깥 차선 중앙은 오른쪽(동)으로 5.625 m.
+	var south := {"points": [[0.0, 0.0], [0.0, 30.0], [0.0, 60.0]], "width": 15.0,
+		"inbound": true, "outbound": true}
+	var north := {"points": [[0.0, 0.0], [0.0, -60.0]], "width": 15.0,
+		"inbound": true, "outbound": true}
+	var arm_lane := LanePath.from_arms(south, north, 7.5, 0, 3.0)
+	ok(arm_lane != null, "갈래 차선을 못 만들었다")
+	if arm_lane != null:
+		for point in arm_lane.points:
+			equal_approx(point.x, 5.625, 0.001, "갈래 차선이 바깥 차선 중앙을 벗어났다")
+		equal_approx(arm_lane.sample(0.0).z, 60.0, 0.001, "갈래 차선 시작점")
+		equal_approx(arm_lane.length_m(), 120.0, 0.001, "갈래 차선 길이")
+		equal_approx(arm_lane.stops[0]["at_m"], 60.0 - 7.5 - 2.0, 0.01, "갈래 정지선")
+	var stub := {"points": [[0.0, 0.0], [0.0, 5.0]], "width": 15.0,
+		"inbound": true, "outbound": true}
+	ok(LanePath.from_arms(stub, north, 7.5, 0, 3.0) == null, "짧은 갈래로 차선을 만들었다")
 	finish()

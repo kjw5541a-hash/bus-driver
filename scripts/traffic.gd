@@ -153,7 +153,7 @@ func _drive(car: Car, leader: Car, bus_on: Vector2, t: float, delta: float) -> v
 	if leader != null:
 		gap = leader.distance - CAR_HALF_LENGTH_M - front
 	# 차선 옆으로 비켜 선 버스(정류장)는 장애물이 아니다. 그러면 뒤차가 영원히 선다.
-	if bus_on.y <= BUS_LANE_REACH_M and bus_on.x > car.distance:
+	if absf(bus_on.y) <= BUS_LANE_REACH_M and bus_on.x > car.distance:
 		gap = minf(gap, bus_on.x - BUS_HALF_LENGTH_M - front)
 	var stop_m := INF
 	var phase := TrafficSignal.Phase.GREEN
@@ -195,7 +195,7 @@ func _recycle_one(car: Car, low: float, high: float, bus_on: Vector2) -> void:
 		car.speed = 0.0
 
 func _free_at(lane: LanePath, distance: float, moving: Car, bus_on: Vector2) -> bool:
-	if bus_on.y <= BUS_LANE_REACH_M and absf(bus_on.x - distance) < SPAWN_GAP_M:
+	if absf(bus_on.y) <= BUS_LANE_REACH_M and absf(bus_on.x - distance) < SPAWN_GAP_M:
 		return false
 	for other in cars:
 		if other != moving and other.lane == lane \
