@@ -247,16 +247,31 @@ ONEWAY_VALUES = frozenset({"yes", "true", "1", "-1"})
 
 
 def lane_count(tags: dict) -> int:
-    """차선 수. lanes 태그가 없으면 폭에서 되짚는다(최소 2)."""
+    """차선 수. lanes 태그가 없으면 폭에서 되짚는다.
+
+    왕복 도로는 가장 가까운 짝수(최소 2, 딱 중간이면 적은 쪽)로 맞춘다. 중앙선을
+    오프셋 0 에 그리므로 홀수면 중앙선이 차선 한복판을 가른다. 서울의 홀수
+    lanes 는 대개 중앙 회전 차로를 센 것이다.
+    """
+    value = None
     lanes = tags.get("lanes")
     if lanes is not None:
         try:
             value = int(lanes)
-            if value >= 1:
-                return value
         except (TypeError, ValueError):
-            pass
-    return max(2, round(road_width(tags) / LANE_WIDTH))
+            value = None
+        if value is not None and value < 1:
+            value = None
+    if value is None:
+        value = road_width(tags) / LANE_WIDTH
+    if tags.get("oneway") in ONEWAY_VALUES:
+        return max(1, round(value))
+    return max(2, 2 * math.ceil(value / 2 - 0.5))
+
+
+def outer_lane_offset(width: float, lanes: int) -> float:
+    """도로 중심에서 가장 바깥(오른쪽) 차선 한가운데까지. 왕복·일방통행 같은 식이다."""
+    return width / 2.0 - width / (2.0 * lanes)
 
 
 def _marking_quad(builder: MeshBuilder, ax, az, bx, bz, nx, nz,

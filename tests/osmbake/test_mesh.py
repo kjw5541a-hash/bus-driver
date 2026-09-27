@@ -5,7 +5,8 @@ import unittest
 from tools.osmbake.geo import METERS_PER_DEG_LAT, Projector
 from tools.osmbake.mesh import (MeshBuilder, build_buildings, build_roads,
                                  build_markings, building_height, lane_count,
-                                 build_sidewalks, road_width, triangulate,
+                                 build_sidewalks, outer_lane_offset, road_width,
+                                 triangulate,
                                  CURB_HEIGHT, MARKING_Y,
                                  split_chunks)
 
@@ -365,15 +366,29 @@ if __name__ == "__main__":
 
 
 class TestLaneCount(unittest.TestCase):
-    def test_lanes_태그가_우선(self):
-        self.assertEqual(lane_count({"highway": "primary", "lanes": "7"}), 7)
+    def test_lanes_태그가_짝수면_그대로(self):
+        self.assertEqual(lane_count({"highway": "primary", "lanes": "6"}), 6)
 
-    def test_태그가_없으면_폭에서_되짚는다(self):
-        # primary 20 m / 3.2 m = 6.25 → 6
+    def test_왕복_홀수_lanes_는_적은_짝수로(self):
+        self.assertEqual(lane_count({"highway": "primary", "lanes": "7"}), 6)
+        self.assertEqual(lane_count({"highway": "primary", "lanes": "3"}), 2)
+
+    def test_일방통행은_홀수를_그대로(self):
+        self.assertEqual(lane_count({"highway": "primary", "lanes": "3",
+                                     "oneway": "yes"}), 3)
+
+    def test_태그가_없으면_폭에서_짝수로_되짚는다(self):
+        # primary 20 m / 3.2 m = 6.25 → 6, secondary 15 m / 3.2 m = 4.69 → 4
         self.assertEqual(lane_count({"highway": "primary"}), 6)
+        self.assertEqual(lane_count({"highway": "secondary"}), 4)
 
     def test_최소_두_차선(self):
         self.assertEqual(lane_count({"highway": "service"}), 2)
+
+    def test_가장_바깥_차선_중앙(self):
+        self.assertAlmostEqual(outer_lane_offset(15.0, 4), 5.625)
+        self.assertAlmostEqual(outer_lane_offset(7.0, 2), 1.75)
+        self.assertAlmostEqual(outer_lane_offset(4.0, 1), 0.0)
 
 
 class TestBuildMarkings(unittest.TestCase):
