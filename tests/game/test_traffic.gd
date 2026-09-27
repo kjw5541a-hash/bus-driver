@@ -52,7 +52,26 @@ func _ready() -> void:
 		if car.is_police:
 			police += 1
 	ok(police == 2, "경찰차가 %d 대다" % police)
+	_check_models()
 	start_distances = traffic.cars.map(func(car) -> float: return car.distance)
+
+# 차마다 받은 차 모델이 붙고, 경찰차는 일반 차와 색 머티리얼이 다르다.
+func _check_models() -> void:
+	var police_material: Material = null
+	var body_material: Material = null
+	for car in traffic.cars:
+		var model := car.body.get_node_or_null(Traffic.CAR_MODEL_NAME) as Node3D
+		ok(model != null, "차 모델이 없다")
+		if model == null:
+			return
+		var meshes := model.find_children("*", "MeshInstance3D", true, false)
+		ok(meshes.size() == 1 and meshes[0].material_override != null,
+			"차 모델 머티리얼이 없다")
+		if car.is_police:
+			police_material = meshes[0].material_override
+		else:
+			body_material = meshes[0].material_override
+	ok(police_material != body_material, "경찰차 색이 일반 차와 같다")
 
 func _physics_process(delta: float) -> void:
 	if done or traffic == null:

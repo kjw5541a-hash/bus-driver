@@ -45,6 +45,11 @@ const BODY_COLORS := [Color(0.55, 0.56, 0.58), Color(0.92, 0.92, 0.90),
 const POLICE_COLOR := Color(0.10, 0.18, 0.55)
 const BEACON_COLOR := Color(0.90, 0.10, 0.12)
 const HIDDEN_Y := -100.0          # 쉬는 교차 차량을 치워 두는 높이
+const CAR_SCENE := preload("res://assets/models/car.glb")
+const CAR_MODEL_NAME := "Model"
+# 모델은 길이 1.6(X) · 높이 0.776 · 폭 0.904 m 다. 축마다 BODY_SIZE 에 맞춘다.
+# 길이에 맞춰 균일하게 키우면 폭 2.6 m 가 되어 차선을 넘는다.
+const CAR_MODEL_SCALE := Vector3(4.6 / 1.6, 1.4 / 0.776, 1.8 / 0.904)
 
 class Car:
 	var body: AnimatableBody3D
@@ -70,6 +75,7 @@ var _lanes: PackedInt32Array = []   # 정방향 경로점 순서
 var _oneway: PackedByteArray = []
 var _widths: PackedFloat32Array = []
 var _by_road: Dictionary = {}       # LanePath -> [Car], 이번 프레임에 달리는 차
+var _car_materials: Dictionary = {} # Color -> 색을 곱한 차 모델 머티리얼
 
 func build(data: RouteData, bus: Node3D) -> void:
 	_bus = bus
@@ -147,16 +153,15 @@ func _make_car(is_police: bool, color_index: int) -> Car:
 	shape.shape = box
 	shape.position.y = BODY_SIZE.y * 0.5
 	body.add_child(shape)
-	var mesh := MeshInstance3D.new()
-	var box_mesh := BoxMesh.new()
-	box_mesh.size = BODY_SIZE
-	mesh.mesh = box_mesh
-	var material := StandardMaterial3D.new()
-	material.albedo_color = POLICE_COLOR if is_police \
-		else BODY_COLORS[color_index % BODY_COLORS.size()]
-	mesh.material_override = material
-	mesh.position.y = BODY_SIZE.y * 0.5
-	body.add_child(mesh)
+	var model: Node3D = CAR_SCENE.instantiate()
+	model.name = CAR_MODEL_NAME
+	# 보닛(앞)이 -X 다. 차의 앞은 -Z 라 Y 축으로 -90° 돌린다. 배율은 모델 축 기준이다.
+	model.transform = Transform3D(
+		Basis(Vector3.UP, -PI / 2.0) * Basis.from_scale(CAR_MODEL_SCALE), Vector3.ZERO)
+	var mesh: MeshInstance3D = model.find_children("*", "MeshInstance3D", true, false)[0]
+	mesh.material_override = _car_material(mesh, POLICE_COLOR if is_police \
+		else BODY_COLORS[color_index % BODY_COLORS.size()])
+	body.add_child(model)
 	if is_police:
 		var beacon := MeshInstance3D.new()
 		var beacon_mesh := BoxMesh.new()
@@ -173,6 +178,14 @@ func _make_car(is_police: bool, color_index: int) -> Car:
 	car.body = body
 	cars.append(car)
 	return car
+
+# 모델 텍스처 머티리얼에 색을 곱한 것. 색마다 하나를 만들어 나눠 쓴다.
+func _car_material(mesh: MeshInstance3D, color: Color) -> Material:
+	if not _car_materials.has(color):
+		var material: StandardMaterial3D = mesh.get_active_material(0).duplicate()
+		material.albedo_color = color
+		_car_materials[color] = material
+	return _car_materials[color]
 
 func _bus_point() -> Vector3:
 	if _bus != null and _bus.is_inside_tree():
