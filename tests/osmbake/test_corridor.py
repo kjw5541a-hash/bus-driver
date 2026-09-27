@@ -1,4 +1,5 @@
 """코리도 수집과 신호 후보 합성."""
+import math
 import unittest
 
 from tools.osmbake.corridor import (_has_camera, corridor_bbox, near_path,
@@ -45,6 +46,62 @@ class TestNearPath(unittest.TestCase):
         crossing = way(1, [1, 2], [(37.5001, 127.0005), (37.5200, 127.0005)])
         kept = near_path([crossing], self.path, self.projector, 250.0)
         self.assertEqual(len(kept), 1)
+
+
+class TestSignalArms(unittest.TestCase):
+    def setUp(self):
+        self.projector = Projector(37.500, 127.000)
+        self.path = project_path([(37.500, 127.000), (37.500, 127.002)],
+                                 self.projector)
+        # T자: 서(왕복), 동(일방통행, 교차로에서 나가기만), 북(왕복, 짧은 조각 둘)
+        elements = [
+            way(1, [10, 50], [(37.500, 127.0000), (37.500, 127.0010)]),
+            way(2, [50, 11], [(37.500, 127.0010), (37.500, 127.0020)],
+                oneway="yes"),
+            way(3, [50, 12], [(37.500, 127.0010), (37.5002, 127.0010)]),
+            way(4, [12, 13], [(37.5002, 127.0010), (37.5010, 127.0010)]),
+        ]
+        node = {"type": "node", "id": 99, "lat": 37.500, "lon": 127.0010,
+                "tags": {"highway": "traffic_signals"}}
+        self.signal = signal_candidates(build_graph(elements), [node],
+                                        self.projector, self.path, 250.0)[0]
+
+    def _length(self, points):
+        return sum(math.dist(a, b) for a, b in zip(points, points[1:]))
+
+    def _arm_toward(self, test):
+        """교차로에서 끝점까지의 (dx, dz) 로 갈래를 고른다."""
+        return [arm for arm in self.signal["arms"]
+                if test((arm["points"][-1][0] - arm["points"][0][0],
+                         arm["points"][-1][1] - arm["points"][0][1]))][0]
+
+    def test_갈래는_조각마다_하나(self):
+        self.assertEqual(len(self.signal["arms"]), 3)
+
+    def test_갈래는_교차로_노드에서_시작하고_60m_이내(self):
+        center = self.projector.to_xz(37.500, 127.0010)
+        for arm in self.signal["arms"]:
+            self.assertAlmostEqual(arm["points"][0][0], center[0], places=1)
+            self.assertAlmostEqual(arm["points"][0][1], center[1], places=1)
+            self.assertLessEqual(self._length(arm["points"]), 60.01)
+
+    def test_짧은_조각은_곧은_이음으로_이어_60m(self):
+        north = self._arm_toward(lambda point: point[1] < -1.0)
+        self.assertAlmostEqual(self._length(north["points"]), 60.0, places=1)
+
+    def test_일방통행_갈래는_한_방향만(self):
+        east = self._arm_toward(lambda point: point[0] > 1.0)
+        self.assertEqual((east["inbound"], east["outbound"]), (False, True))
+        west = self._arm_toward(lambda point: point[0] < -1.0)
+        self.assertEqual((west["inbound"], west["outbound"]), (True, True))
+        self.assertEqual(west["width"], 20.0)
+
+    def test_노드를_못_찾으면_빈_갈래(self):
+        node = {"type": "node", "id": 9, "lat": 37.5000, "lon": 127.0010,
+                "tags": {"highway": "traffic_signals"}}
+        signal = signal_candidates(build_graph([]), [node], self.projector,
+                                   self.path, 250.0)[0]
+        self.assertEqual(signal["arms"], [])
 
 
 class TestSignalCandidates(unittest.TestCase):

@@ -30,6 +30,10 @@ DEFAULT_HALF_WIDTH = 7.5
 
 # OSM 신호등 노드를 그래프 노드에 붙이는 한계 거리.
 SNAP_LIMIT_M = 30.0
+# 교차로 갈래를 따라가는 길이. 게임의 교차 차선과 정지선이 이 선을 쓴다.
+ARM_LENGTH_M = 60.0
+# 짧은 조각 끝에서 다음 조각으로 이어 갈 때 허용하는 꺾임.
+ARM_CONTINUE_DEG = 45.0
 
 # 한 교차로로 묶는 거리. OSM 은 진입 방향마다 traffic_signals 노드를 따로
 # 찍어서 큰 교차로 하나가 노드 12개로 나온다. 합치지 않으면 seoul-100 이
@@ -141,10 +145,69 @@ def signal_candidates(graph: RoadGraph, osm_signal_nodes: list[dict],
     node_xz = {node_id: projector.to_xz(*graph.coords[node_id])
                for node_id in incident}
 
+    # 갈래는 조각 중간 노드까지 따라간다. node_xz 는 스냅 대상(조각 끝점)이라
+    # 따로 둔다.
+    any_xz = dict(node_xz)
+
+    def xz_of(node_id):
+        if node_id not in any_xz:
+            any_xz[node_id] = projector.to_xz(*graph.coords[node_id])
+        return any_xz[node_id]
+
+    def chunk_key(edge):
+        # 같은 조각의 정방향·역방향 엣지는 한 갈래다.
+        return (edge.way_id, frozenset(edge.node_ids))
+
+    def oriented(edge, node_id):
+        return edge.node_ids if edge.start == node_id else edge.node_ids[::-1]
+
+    def arm_points(first_edge, node_id):
+        """node_id 에서 나가는 조각을 따라, 짧으면 가장 곧은 이음 조각으로
+        이어 ARM_LENGTH_M 까지."""
+        ids = list(oriented(first_edge, node_id))
+        seen = {chunk_key(first_edge)}
+        points = [xz_of(n) for n in ids]
+        length = sum(math.dist(a, b) for a, b in zip(points, points[1:]))
+        while length < ARM_LENGTH_M:
+            tail = ids[-1]
+            heading = _bearing_deg(*points[-2], *points[-1])
+            best, best_delta = None, ARM_CONTINUE_DEG
+            for edge in incident.get(tail, []):
+                if chunk_key(edge) in seen:
+                    continue
+                nxt = oriented(edge, tail)
+                delta = abs((_bearing_deg(*xz_of(nxt[0]), *xz_of(nxt[1]))
+                             - heading + 180.0) % 360.0 - 180.0)
+                if delta <= best_delta:
+                    best, best_delta = edge, delta
+            if best is None:
+                break
+            seen.add(chunk_key(best))
+            for n in oriented(best, tail)[1:]:
+                ids.append(n)
+                length += math.dist(points[-1], xz_of(n))
+                points.append(xz_of(n))
+        return _cut_at(points, ARM_LENGTH_M)
+
+    def arms_of(node_id) -> list[dict]:
+        groups: dict = {}
+        for edge in incident[node_id]:
+            if edge.start == edge.end:
+                continue
+            arm = groups.setdefault(chunk_key(edge), {
+                "edge": edge, "inbound": False, "outbound": False})
+            arm["inbound"] |= edge.end == node_id
+            arm["outbound"] |= edge.start == node_id
+        return [{"points": [[round(x, 2), round(z, 2)]
+                            for x, z in arm_points(arm["edge"], node_id)],
+                 "width": round(arm["edge"].width, 2),
+                 "inbound": arm["inbound"], "outbound": arm["outbound"]}
+                for arm in groups.values()]
+
     def describe(node_id) -> dict:
         if node_id is None:
             return {"axis_deg": list(DEFAULT_AXIS_DEG),
-                    "half_width": DEFAULT_HALF_WIDTH}
+                    "half_width": DEFAULT_HALF_WIDTH, "arms": []}
         x, z = node_xz[node_id]
         bearings = []
         for edge in incident[node_id]:
@@ -156,7 +219,8 @@ def signal_candidates(graph: RoadGraph, osm_signal_nodes: list[dict],
         axis = _axis_pair(bearings)
         half = max(road_width({"highway": edge.highway})
                    for edge in incident[node_id]) / 2.0
-        return {"axis_deg": [axis[0], axis[1]], "half_width": round(half, 2)}
+        return {"axis_deg": [axis[0], axis[1]], "half_width": round(half, 2),
+                "arms": arms_of(node_id)}
 
     def nearest_graph_node(xz):
         # ponytail: 신호등 노드 x 그래프 노드 선형 스캔. OSM 신호등이 노선당
@@ -205,6 +269,23 @@ def signal_candidates(graph: RoadGraph, osm_signal_nodes: list[dict],
         entry["camera"] = _has_camera(key[0], key[1])
         signals.append(entry)
     return _merge_nearby(signals)
+
+
+def _cut_at(points: list[tuple[float, float]],
+            limit: float) -> list[tuple[float, float]]:
+    """폴리라인을 limit m 에서 자른다."""
+    kept = [points[0]]
+    travelled = 0.0
+    for a, b in zip(points, points[1:]):
+        span = math.dist(a, b)
+        if travelled + span >= limit:
+            ratio = (limit - travelled) / span if span > 0 else 0.0
+            kept.append((a[0] + (b[0] - a[0]) * ratio,
+                         a[1] + (b[1] - a[1]) * ratio))
+            return kept
+        travelled += span
+        kept.append(b)
+    return kept
 
 
 def _merge_nearby(signals: list[dict]) -> list[dict]:
