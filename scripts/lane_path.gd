@@ -22,22 +22,6 @@ static func make(route: PackedVector3Array) -> LanePath:
 	lane.cumulative = sums
 	return lane
 
-static func oncoming(route: PackedVector3Array, widths: PackedFloat32Array) -> PackedVector3Array:
-	"""버스 주행선을 왼쪽으로 폭의 절반 밀고 뒤집은 반대편 차선.
-
-	주행선은 도로 중심에서 오른쪽으로 폭의 1/4 이다. 왼쪽으로 1/2 밀면 반대편
-	차선 중앙이다."""
-	var shifted := PackedVector3Array()
-	for index in route.size():
-		var forward := route[mini(index + 1, route.size() - 1)] - route[maxi(index - 1, 0)]
-		forward.y = 0.0
-		forward = forward.normalized() if forward.length_squared() > 0.0001 else Vector3.FORWARD
-		var left := Vector3(forward.z, 0.0, -forward.x)
-		var width := widths[index] if index < widths.size() else RouteData.DEFAULT_ROAD_WIDTH_M
-		shifted.append(route[index] + left * width * 0.5)
-	shifted.reverse()
-	return shifted
-
 static func crossing(center: Vector3, bearing_deg: float, half_width: float,
 		axis: int, offset_s: float) -> LanePath:
 	"""교차로 중심을 지나는 직선 차선. 진행 방향 오른쪽으로 반폭의 절반 비킨다."""

@@ -16,14 +16,6 @@ func _ready() -> void:
 	equal_approx(lane.project(Vector3(30.0, 0.0, -4.0)).y, -4.0, 0.001, "왼쪽은 음수")
 	ok(lane.index_at(24.0) == 0 and lane.index_at(26.0) == 1, "가까운 경로점 인덱스")
 
-	# 동쪽 진행의 왼쪽은 북(-Z). 폭 10 m 면 5 m 북쪽에서 서쪽으로 간다.
-	var oncoming := LanePath.make(LanePath.oncoming(route,
-		PackedFloat32Array([10.0, 10.0, 10.0])))
-	equal_approx(oncoming.sample(0.0).x, 100.0, 0.001, "마주 오는 차선이 안 뒤집혔다")
-	equal_approx(oncoming.sample(0.0).z, -5.0, 0.001, "마주 오는 차선 오프셋")
-	equal_approx(oncoming.sample(60.0).z, -5.0, 0.001, "마주 오는 차선 중간 오프셋")
-	equal_approx(oncoming.direction_at(50.0).x, -1.0, 0.001, "마주 오는 차선 방향")
-
 	# 교차로 (60, 0), 반폭 8, 축 [0, 90]. 동쪽 진행은 축 1. 정지선 60 - 8 - 2 = 50.
 	# 둘째 신호는 차선에서 100 m 떨어져 안 잡혀야 한다.
 	lane.add_signals([

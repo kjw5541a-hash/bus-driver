@@ -18,12 +18,17 @@ var red_runs := 0
 var tight := 0
 var stopped_at_red := false
 var saw_cross := false
+var oneway_oncoming := 0    # 일방통행 구간을 달린 마주 오는 차
+var saw_lanes := false      # 같은 방향 차가 두 차선 이상에 퍼진 적이 있다
+var multi_lane := false     # 방향당 두 차선 이상인 구간이 있다(옛 json 은 없다)
 var start_distances: Array = []
 var done := false
 
 func _ready() -> void:
 	TrafficSignal.time_override = 0.0
 	var data := RouteData.load_route("seoul-100")
+	for count in data.route_lanes:
+		multi_lane = multi_lane or count >= 4
 	lane = LanePath.make(data.route)
 	lane.add_signals(data.signals, RouteData.SECTION_SIGNAL_M)
 	ok(not lane.stops.is_empty(), "seoul-100 에 정지선이 없다")
@@ -62,37 +67,48 @@ func _physics_process(delta: float) -> void:
 		_report()
 
 func _check(t: float) -> void:
-	var by_lane := {}
+	var by_road := {}
+	var forward_lanes := {}
 	for car in traffic.cars:
 		if car.crossing >= 0:
 			saw_cross = true
-		if car.lane == null:
+		if car.road == null or car.parked:
 			continue
-		if not by_lane.has(car.lane):
-			by_lane[car.lane] = []
-		by_lane[car.lane].append(car)
+		if car.road == traffic.backward_road \
+				and traffic.lane_count_at(car.road, car.distance) == 0:
+			oneway_oncoming += 1
+		if car.road == traffic.forward_road:
+			forward_lanes[car.lane_index] = true
+		if not by_road.has(car.road):
+			by_road[car.road] = []
+		by_road[car.road].append(car)
 		var front: float = car.distance + Traffic.CAR_HALF_LENGTH_M
 		var was: float = previous_front.get(car, front)
 		previous_front[car] = front
 		if front > was and front - was < TELEPORT_M:
-			for line in car.lane.stops:
+			for line in car.road.stops:
 				var at: float = line["at_m"]
 				if was < at and front >= at and TrafficSignal.phase_at(
 						line["offset"], line["axis"], t) == TrafficSignal.Phase.RED:
 					red_runs += 1
 		if car.speed < 0.1:
-			var line: Dictionary = car.lane.next_stop(front)
+			var line: Dictionary = car.road.next_stop(front)
 			if not line.is_empty() and float(line["at_m"]) - front < 3.0 \
 					and TrafficSignal.phase_at(line["offset"], line["axis"], t) \
 					== TrafficSignal.Phase.RED:
 				stopped_at_red = true
-	for queue in by_lane.values():
-		queue.sort_custom(func(a, b) -> bool: return a.distance < b.distance)
-		for index in range(1, queue.size()):
-			var gap: float = queue[index].distance - queue[index - 1].distance \
-				- Traffic.CAR_HALF_LENGTH_M * 2.0
-			if gap < MIN_BUMPER_GAP_M:
-				tight += 1
+	if forward_lanes.size() >= 2:
+		saw_lanes = true
+	# 범퍼 간격은 가로로 겹치는 차끼리만 본다. 옆 차선 차는 나란히 서도 된다.
+	for queue in by_road.values():
+		for car in queue:
+			for other in queue:
+				if other == car or other.distance < car.distance \
+						or absf(other.side_m - car.side_m) >= Traffic.LATERAL_M:
+					continue
+				var gap: float = other.distance - car.distance - Traffic.CAR_HALF_LENGTH_M * 2.0
+				if gap < MIN_BUMPER_GAP_M and other.distance > car.distance:
+					tight += 1
 
 func _report() -> void:
 	done = true
@@ -100,16 +116,18 @@ func _report() -> void:
 	ok(stopped_at_red, "적색 정지선 앞에 선 차가 한 번도 없다")
 	ok(tight == 0, "범퍼 간격 %.0f m 미만이 %d 번" % [MIN_BUMPER_GAP_M, tight])
 	ok(saw_cross, "교차 차량이 안 생겼다")
+	ok(oneway_oncoming == 0, "일방통행 구간을 마주 오는 차가 %d 번 달렸다" % oneway_oncoming)
+	ok(saw_lanes or not multi_lane, "같은 방향 차가 한 차선만 썼다")
 	var moved := false
 	for index in traffic.cars.size():
 		if absf(traffic.cars[index].distance - start_distances[index]) > 1.0:
 			moved = true
 	ok(moved, "차가 하나도 안 움직였다")
 	# 버스 창 안에 같은 방향 차가 거의 다 있어야 한다. 재활용이 막힌 한 대는 봐준다.
-	var along := traffic.same_lane.project(mover.global_position).x
+	var along := traffic.forward_road.project(mover.global_position).x
 	var inside := 0
 	for car in traffic.cars:
-		if car.lane == traffic.same_lane \
+		if car.road == traffic.forward_road and not car.parked \
 				and car.distance >= along - Traffic.BEHIND_M - Traffic.SPAWN_GAP_M \
 				and car.distance <= along + Traffic.AHEAD_M + Traffic.SPAWN_GAP_M:
 			inside += 1
