@@ -82,7 +82,7 @@ func _ready() -> void:
 	watch.busted.connect(hud.on_busted)
 
 	boarding = BoardingWatch.new()
-	boarding.build(data.stop_targets)
+	boarding.build(data.stop_targets, data.stop_forwards)
 	boarding.bus = bus
 	add_child(boarding)
 

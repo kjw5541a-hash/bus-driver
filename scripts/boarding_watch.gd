@@ -10,6 +10,10 @@ const STOP_RADIUS_M := 15.0
 const STOP_SPEED_MPS := 0.5
 const AHEAD_WINDOW := 4      # next_index 부터 앞으로 보는 개수
 const BACK_WINDOW := 2       # 되돌아가 다시 서는 것을 허용하는 깊이
+# 다음 정류장을 진행 방향으로 이만큼 지나치면 놓친 것으로 치고 그다음
+# 정류장으로 넘어간다. 옆으로 이보다 멀면(노선이 되돌아와 스치는 곳) 안 본다.
+const PASS_BEYOND_M := 30.0
+const PASS_SIDE_M := 40.0
 
 signal boarding_started(stop_index: int)
 signal boarding_finished(boarded: int, alighted: int)
@@ -50,6 +54,7 @@ var alight_count: int:
 	get: return int(_pending.get("alighted", 0))
 
 var _targets: PackedVector3Array = []
+var _forwards: PackedVector3Array = []
 var _boarding_index := -1
 var _pending := {}           # 진행 중인 정차의 serve() 결과
 var _done := {}              # 승하차를 마친 정류장
@@ -58,8 +63,10 @@ var _last_position := Vector3.ZERO
 var _has_last := false
 var _bell_index := -1        # 벨 여부를 마지막으로 따진 next_index
 
-func build(targets: PackedVector3Array) -> void:
+func build(targets: PackedVector3Array,
+		forwards: PackedVector3Array = PackedVector3Array()) -> void:
 	_targets = targets
+	_forwards = forwards
 	plan = PassengerPlan.new()
 	plan.build(targets.size())
 
@@ -101,6 +108,12 @@ func _physics_process(delta: float) -> void:
 	while next_index < best:
 		_pass(next_index)
 		next_index += 1
+	# 가장 가까운 정류장 기준으로는 두 정류장의 중간쯤에서야 넘어간다. 그
+	# 사이 HUD 가 지나친 정류장까지 거리를 늘려 가며 보여 줘서, 진행 방향으로
+	# 멀어지면 바로 넘긴다.
+	while _passed_beyond(next_index, here):
+		_pass(next_index)
+		next_index += 1
 	_check_bell()
 
 	if best_distance <= STOP_RADIUS_M and speed < STOP_SPEED_MPS \
@@ -117,6 +130,14 @@ func _pass(index: int) -> void:
 	_missed_once[index] = true
 	missed += 1
 	stop_missed.emit(index)
+
+func _passed_beyond(index: int, here: Vector3) -> bool:
+	if index >= _forwards.size() or index >= _targets.size() - 1:
+		return false   # 종점은 넘길 다음이 없다
+	var offset := here - _targets[index]
+	offset.y = 0.0
+	var along := offset.dot(_forwards[index])
+	return along > PASS_BEYOND_M and (offset - _forwards[index] * along).length() < PASS_SIDE_M
 
 func _check_bell() -> void:
 	"""다음 정류장이 바뀌면 거기서 내릴 사람이 있는지 보고 벨을 울린다."""

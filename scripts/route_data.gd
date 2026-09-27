@@ -32,6 +32,8 @@ var chunks: Array = []
 var signals: Array = []
 # 정차 목표점. stops 와 같은 순서다. 자세한 이유는 point_at_progress 를 보라.
 var stop_targets: PackedVector3Array = []
+# 정차 목표점에서 노선 진행 방향(단위 벡터). 정류장을 지나쳤는지 재는 데 쓴다.
+var stop_forwards: PackedVector3Array = []
 # slice() 가 채운다. 자르지 않은 원본은 0 / 1 이다.
 var section := 0
 var section_count := 1
@@ -117,8 +119,12 @@ func point_at_progress(distance_m: float) -> Vector3:
 
 func _build_stop_targets() -> void:
 	stop_targets = PackedVector3Array()
+	stop_forwards = PackedVector3Array()
 	for stop in stops:
-		stop_targets.append(point_at_progress(float(stop.get("progress_m", 0.0))))
+		var progress := float(stop.get("progress_m", 0.0))
+		stop_targets.append(point_at_progress(progress))
+		stop_forwards.append((point_at_progress(progress + 1.0)
+			- point_at_progress(progress - 1.0)).normalized())
 
 func sections() -> Array:
 	"""구간마다 Vector2i(첫 정류장, 끝 정류장). 정류장이 2 곳 미만이면 빈 배열."""

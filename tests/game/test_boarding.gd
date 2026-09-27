@@ -14,6 +14,7 @@ func _ready() -> void:
 	await _test_nearest_of_overlapping()
 	await _test_passing_by_is_missed()
 	await _test_empty_stop_is_not_missed()
+	await _test_passed_far_moves_to_next()
 	await _test_timer_finishes_and_boards()
 	await _test_riders_board_one_by_one()
 	await _test_bell_rings_before_alighting_stop()
@@ -24,7 +25,8 @@ func _targets() -> PackedVector3Array:
 	return PackedVector3Array([Vector3.ZERO, Vector3(30.0, 0.0, 0.0),
 		Vector3(60.0, 0.0, 0.0), Vector3(90.0, 0.0, 0.0)])
 
-func _make(waiting: Array) -> Array:
+func _make(waiting: Array, targets := PackedVector3Array(),
+		forwards := PackedVector3Array()) -> Array:
 	_started = []
 	_finished = []
 	_missed = []
@@ -35,7 +37,7 @@ func _make(waiting: Array) -> Array:
 	bus.position = Vector3(0.0, 0.0, 500.0)
 	add_child(bus)
 	var watch := BoardingWatch.new()
-	watch.build(_targets())
+	watch.build(_targets() if targets.is_empty() else targets, forwards)
 	# 난수를 고정한다. 안 그러면 대기 0 명이 나와 판정 테스트가 흔들린다.
 	for index in range(waiting.size()):
 		watch.plan.force_waiting(index, int(waiting[index]))
@@ -111,6 +113,26 @@ func _test_passing_by_is_missed() -> void:
 		"0·1 번을 지나쳤는데 놓침이 %s 다" % str(_missed))
 	ok(made[0].missed == _missed.size(),
 		"놓침 수 %d 와 신호 수 %d 가 다르다" % [made[0].missed, _missed.size()])
+	_drop(made)
+
+func _test_passed_far_moves_to_next() -> void:
+	# 정류장이 200 m 간격이면 가장 가까운 정류장은 100 m 까지 0 번이다.
+	# 진행 방향으로 30 m 를 넘기면 그 전에 1 번으로 넘어가야 한다.
+	var targets := PackedVector3Array([Vector3.ZERO, Vector3(200.0, 0.0, 0.0),
+		Vector3(400.0, 0.0, 0.0)])
+	var forwards := PackedVector3Array([Vector3.RIGHT, Vector3.RIGHT, Vector3.RIGHT])
+	var made := await _make([4, 4, 4], targets, forwards)
+	var bus: Node3D = made[1]
+	for step in 5:
+		bus.global_position = Vector3(-10.0 + step * 7.0, 0.0, 3.0)
+		await get_tree().physics_frame
+	ok(made[0].next_index == 0, "28 m 지났을 뿐인데 다음 정류장이 바뀌었다")
+	for step in 3:
+		bus.global_position = Vector3(35.0 + step * 7.0, 0.0, 3.0)
+		await get_tree().physics_frame
+	ok(made[0].next_index == 1, "0 번을 35 m 넘게 지났는데 다음 정류장이 그대로다")
+	ok(_missed.has(0), "0 번을 지나쳤는데 놓침이 아니다")
+	equal_approx(made[0].distance_to_next(), 200.0 - 49.0, 1.0, "다음 정류장까지 거리")
 	_drop(made)
 
 func _test_empty_stop_is_not_missed() -> void:
