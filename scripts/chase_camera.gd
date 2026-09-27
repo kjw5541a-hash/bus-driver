@@ -22,10 +22,10 @@ const PITCH_MAX_DEG := -3.0
 const ORBIT_SENSITIVITY := 0.4   # 마우스 픽셀당 도
 const ZOOM_STEP := 3.0           # 휠 한 칸당 m
 
-# 운전석 시점. 버스 로컬 좌표다 — 차체는 2.5 x 3.0 x 11.0 이고 바닥이 y=0.5 라
-# 눈높이 2.3 m 는 실제 저상버스 운전석과 비슷하다. 한국은 우측통행이라
+# 운전석 시점. 버스 로컬 좌표다 — 버스 원점은 지면 위 0.42 m 이고 모델 앞유리
+# 윗변이 지면 위 2.55 m 라, 눈을 지면 위 2.3 m 에 둔다. 한국은 우측통행이라
 # 운전석이 왼쪽(-X), 앞유리 안쪽(-Z)이다.
-const EYE_OFFSET := Vector3(-0.75, 2.3, -3.8)
+const EYE_OFFSET := Vector3(-0.75, 1.9, -3.8)
 const FP_PITCH_MIN_DEG := -35.0
 const FP_PITCH_MAX_DEG := 20.0
 
@@ -88,6 +88,7 @@ func set_first_person(value: bool) -> void:
 	# 운전석에서는 스프링암을 접는다. 길이가 0 이면 카메라가 피벗에 그대로 선다.
 	_arm.spring_length = 0.0 if value else _distance
 	_arm.rotation_degrees.x = _fp_pitch_deg if value else _pitch_deg
+	view.set_cull_mask_value(Bus.MODEL_LAYER, not value)
 
 func toggle_view() -> void:
 	set_first_person(not first_person)

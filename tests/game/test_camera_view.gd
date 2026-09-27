@@ -46,6 +46,7 @@ func _test_first_person_is_inside() -> void:
 	ok(here.length() < 5.0, "운전석 시점이 차 밖에 있다: %s" % str(here))
 	ok(here.z < 0.0, "운전석 시점이 차 뒤쪽이다: %s" % str(here))
 	ok(here.y > 1.5 and here.y < 3.0, "눈높이가 아니다: %.2f" % here.y)
+	ok(not camera.view.get_cull_mask_value(Bus.MODEL_LAYER), "운전석에서 버스 모델이 보인다")
 	made[0].queue_free()
 	made[1].queue_free()
 
@@ -59,6 +60,7 @@ func _test_toggle_returns() -> void:
 	await get_tree().physics_frame
 	var here := _camera_position(camera)
 	ok(here.z > 10.0, "추격으로 돌아오지 않았다: %s" % str(here))
+	ok(camera.view.get_cull_mask_value(Bus.MODEL_LAYER), "추격 시점에서 버스 모델이 안 보인다")
 	made[0].queue_free()
 	made[1].queue_free()
 

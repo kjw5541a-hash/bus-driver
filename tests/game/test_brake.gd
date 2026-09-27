@@ -30,6 +30,7 @@ func _ready() -> void:
 	bus = Bus.new()
 	bus.position = Vector3(0.0, 1.5, 0.0)
 	add_child(bus)
+	ok(bus.get_node_or_null(Bus.BUS_MODEL_NAME) != null, "버스 모델이 없다")
 
 func _physics_process(delta: float) -> void:
 	if bus == null or phase == Phase.DONE:

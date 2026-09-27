@@ -23,6 +23,17 @@ const REVERSE_SPEED_LIMIT := MAX_SPEED * 0.3
 const MAX_STEERING := 0.70
 const STEER_RATE := 1.5                      # rad/s. 조향 변화 속도 상한
 const STEER_SPEED_FULL := 16.7               # m/s, 60 km/h
+const BUS_SCENE := preload("res://assets/models/bus_100.glb")
+const BUS_MODEL_NAME := "Model"
+# 평지에 선 버스의 원점은 지면 위 0.42 m 다(서스펜션 실측). 모델은 바퀴
+# 바닥이 y=0 이라 그만큼 내린다.
+const MODEL_GROUND_Y := -0.42
+# 모델 축간 중심(앞 3.3, 뒤 -2.4 m 의 가운데)을 물리 바퀴 축간 중심(-0.3 m)에
+# 맞춘다. 모델 축간 거리가 5.7 m 라 물리(6.6 m)보다 짧다.
+const MODEL_OFFSET_Z := 0.15
+# 모델은 이 렌더 레이어에만 그린다. 운전석 시점 카메라가 이 레이어를 빼서
+# 차체 안쪽 벽 대신 바깥을 본다.
+const MODEL_LAYER := 2
 
 var _respawn_transform := Transform3D()
 var _respawn_pending := false
@@ -49,15 +60,14 @@ func _ready() -> void:
 	shape.position = Vector3(0.0, 2.0, 0.0)
 	add_child(shape)
 
-	var body_mesh := MeshInstance3D.new()
-	var mesh := BoxMesh.new()
-	mesh.size = Vector3(2.5, 3.0, 11.0)
-	body_mesh.mesh = mesh
-	body_mesh.position = Vector3(0.0, 2.0, 0.0)
-	var material := StandardMaterial3D.new()
-	material.albedo_color = Color(0.15, 0.45, 0.85)
-	body_mesh.material_override = material
-	add_child(body_mesh)
+	var model: Node3D = BUS_SCENE.instantiate()
+	model.name = BUS_MODEL_NAME
+	# 모델 앞(전조등)이 +X 다. 버스 앞은 -Z 라 Y 축으로 90° 돌린다.
+	model.transform = Transform3D(Basis(Vector3.UP, PI / 2.0),
+		Vector3(0.0, MODEL_GROUND_Y, MODEL_OFFSET_Z))
+	for mesh in model.find_children("*", "VisualInstance3D", true, false):
+		mesh.layers = 1 << (MODEL_LAYER - 1)
+	add_child(model)
 
 	# [z 위치, x 위치, 조향 여부]. 앞바퀴가 조향, 뒷바퀴가 구동이다.
 	for spec in [[-3.6, -1.1, true], [-3.6, 1.1, true],
