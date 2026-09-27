@@ -7,9 +7,10 @@
 import heapq
 import math
 
+import shapely
+
 from .geo import haversine, Projector
 from .graph import Edge, RoadGraph
-from .mesh import CURB_SLOPE_M, SIDEWALK_WIDTH
 
 
 def astar(graph: RoadGraph, start: int, goal: int, *,
@@ -221,16 +222,18 @@ def _foot_of(path_xz: list[tuple[float, float]],
     return best[1], best[2], best[3], best[4]
 
 
-def _to_sidewalk(path_xz: list[tuple[float, float]], road_widths: list[float],
+SIDEWALK_SEARCH_M = 30.0   # 우측 인도를 이만큼까지 찾는다
+SIDEWALK_STEP_M = 0.25
+
+
+def _to_sidewalk(path_xz: list[tuple[float, float]], sidewalk,
                  point: tuple[float, float]) -> tuple[float, float] | None:
-    """정류장을 진행 방향 우측 인도 위로 옮긴다. 좌측 정류장은 None.
+    """정류장을 진행 방향 우측의 가장 가까운 인도 한가운데로 옮긴다.
 
-    OSM bus_stop 노드는 경로 중심선에서 중앙값 6.9 m 떨어져 있는데, 서울
-    간선도로 반폭이 7.5~10 m 라 그 자리는 차도 한복판이다. 그대로 두면
-    승객이 도로에서 버스를 기다린다.
-
-    좌측 노드는 반대 방향 노선의 정류장이다. 우측통행하는 이 노선에서는
-    설 수 없으므로 버린다.
+    OSM bus_stop 노드는 차도 한복판에 찍힌 것이 많다. 경로 폭만큼 밀어내면
+    버스전용차로(7 m) 옆에 붙은 간선 차도 위에 떨어지므로, 실제 인도 면을
+    따라가며 찾는다. 좌측 노드(반대 방향 노선의 정류장)와 우측에 인도가 없는
+    노드는 None.
     """
     index, foot_x, foot_z, _t = _foot_of(path_xz, point)
     tx, tz = _tangent(path_xz, index)
@@ -238,10 +241,20 @@ def _to_sidewalk(path_xz: list[tuple[float, float]], road_widths: list[float],
     side = (point[0] - foot_x) * right_x + (point[1] - foot_z) * right_z
     if side <= 0.0:
         return None
-    # 구간 양 끝 중 넓은 쪽. 만나는 점은 좁은 쪽 폭을 갖고 있어서, 넓은
-    # 도로 위 정류장이 차도 안에 떨어지는 것을 막는다.
-    width = max(road_widths[index], road_widths[min(index + 1, len(road_widths) - 1)])
-    out = width / 2.0 + CURB_SLOPE_M + SIDEWALK_WIDTH / 2.0
+    steps = int(SIDEWALK_SEARCH_M / SIDEWALK_STEP_M) + 1
+    offsets = [i * SIDEWALK_STEP_M for i in range(steps)]
+    inside = shapely.contains_xy(sidewalk,
+                                 [foot_x + right_x * o for o in offsets],
+                                 [foot_z + right_z * o for o in offsets])
+    run = []
+    for offset, hit in zip(offsets, inside):
+        if hit:
+            run.append(offset)
+        elif run:
+            break
+    if not run:
+        return None
+    out = (run[0] + run[-1]) / 2.0
     return (foot_x + right_x * out, foot_z + right_z * out)
 
 
@@ -249,11 +262,11 @@ def snap_stops(path_xz: list[tuple[float, float]], stop_nodes: list[dict],
                projector: Projector, *, max_dist_m: float = 30.0,
                merge_within_m: float = 50.0,
                same_place_m: float = 20.0,
-               road_widths: list[float] | None = None) -> list[dict]:
+               sidewalk=None) -> list[dict]:
     """정류장 노드를 경로에 스냅한다. 순서는 경로 진행도가 정한다.
 
-    road_widths 를 주면 진행 방향 우측 정류장만 남기고, 좌표를 차도 밖
-    인도 위로 옮긴다.
+    sidewalk(shapely 인도 면)를 주면 진행 방향 우측 정류장만 남기고, 좌표를
+    가장 가까운 우측 인도 위로 옮긴다.
     """
     snapped = []
     for node in stop_nodes:
@@ -261,8 +274,8 @@ def snap_stops(path_xz: list[tuple[float, float]], stop_nodes: list[dict],
         distance, progress = _nearest_on_path(path_xz, point)
         if distance > max_dist_m:
             continue
-        if road_widths is not None:
-            placed = _to_sidewalk(path_xz, road_widths, point)
+        if sidewalk is not None:
+            placed = _to_sidewalk(path_xz, sidewalk, point)
             if placed is None:
                 continue
             point = placed

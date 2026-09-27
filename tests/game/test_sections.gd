@@ -88,12 +88,14 @@ func _test_deadline() -> void:
 	ok(Timetable.format_mmss(462) == "7:42", "포맷: %s" % Timetable.format_mmss(462))
 	ok(Timetable.format_mmss(60) == "1:00", "포맷: %s" % Timetable.format_mmss(60))
 	ok(Timetable.format_mmss(5) == "0:05", "포맷: %s" % Timetable.format_mmss(5))
-	# 실데이터 모든 구간이 4~16 분이다. 짧은 꼬리 구간이 4 분대다.
+	# 실데이터 모든 구간이 3.5~17 분이다. 짧은 꼬리 구간이 4 분 안팎이다.
+	# 인도 없는 정류장을 빼면서(bake-fixes) 100번 구간 2 가 16.3 분, 654번
+	# 꼬리가 3.8 분이 되어 넓혔다.
 	for route_id in ["seoul-100", "seoul-654", "seoul-seodaemun03"]:
 		var route := RouteData.load_route(route_id)
 		if route == null:
 			continue
 		for index in route.sections().size():
 			var deadline := Timetable.deadline_for(route.slice(index))
-			ok(deadline >= 240.0 and deadline <= 960.0,
+			ok(deadline >= 210.0 and deadline <= 1020.0,
 				"%s 구간 %d 마감 %.0f 초" % [route_id, index, deadline])

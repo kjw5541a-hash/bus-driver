@@ -7,6 +7,9 @@ width 태그는 1 개뿐이었다. 그래서 등급별 추정 테이블을 쓴�
 """
 import math
 
+import shapely
+from shapely.geometry import Polygon
+
 from .geo import Projector
 
 # 서울 기준 차도폭 추정. primary 는 왕복 6차선(20 m), secondary 는 왕복
@@ -161,8 +164,33 @@ def triangulate(polygon: list[tuple[float, float]]) -> list[tuple[int, int, int]
     return [(a, c, b) for a, b, c in triangles]
 
 
-def build_buildings(ways: list[dict], projector: Projector) -> MeshBuilder:
-    """건물 footprint 를 높이만큼 밀어올린 벽 + ear clipping 지붕."""
+MIN_BUILDING_AREA_M2 = 10.0   # 차도에 깎이고 이보다 작게 남은 조각은 버린다
+
+
+def _footprints(ring: list[tuple[float, float]], road) -> list[list[tuple[float, float]]]:
+    """차도(shapely 면)와 겹친 부분을 깎은 footprint 링들.
+
+    도로 폭은 등급별 추정이라 OSM 건물 윤곽과 겹친다. 그대로 두면 골목이
+    버스보다 좁아진다.
+    """
+    polygon = Polygon(ring)
+    if road is None or not polygon.is_valid or not polygon.intersects(road):
+        return [ring]
+    # 노선 전체 차도 면과 바로 빼면 건물마다 큰 다각형을 다시 계산한다.
+    # 건물 둘레 사각형만큼 잘라서 뺀다.
+    nearby = shapely.clip_by_rect(road, *polygon.bounds)
+    # ponytail: 조각의 구멍(건물 안에 갇힌 차도)은 버린다. 드물다.
+    return [list(part.exterior.coords)[:-1]
+            for part in shapely.get_parts(polygon.difference(nearby))
+            if part.geom_type == "Polygon" and part.area >= MIN_BUILDING_AREA_M2]
+
+
+def build_buildings(ways: list[dict], projector: Projector,
+                    road=None) -> MeshBuilder:
+    """건물 footprint 를 높이만큼 밀어올린 벽 + ear clipping 지붕.
+
+    road(shapely 차도 면)를 주면 footprint 에서 차도를 깎는다.
+    """
     builder = MeshBuilder()
     for w in ways:
         tags = w.get("tags", {})
@@ -176,31 +204,36 @@ def build_buildings(ways: list[dict], projector: Projector) -> MeshBuilder:
         ring = [p for i, p in enumerate(ring) if p != ring[i - 1]]
         if len(ring) < 3:
             continue
-        # OSM 은 건물 링 방향을 보장하지 않는다. 벽 루프는 링 순서를 그대로
-        # 쓰므로(triangulate() 처럼 내부에서 정규화하지 않는다) 여기서
-        # 정규화하지 않으면 실제 데이터의 절반가량이 벽이 안쪽을 향한다.
-        # 음수 signed_area 가 바깥을 향하는 방향이다.
-        if _signed_area(ring) > 0:
-            ring = list(reversed(ring))
-
-        height = building_height(tags)
-        for (x1, z1), (x2, z2) in zip(ring, ring[1:] + ring[:1]):
-            dx, dz = x2 - x1, z2 - z1
-            length = math.hypot(dx, dz)
-            if length < 0.01:
-                continue
-            # 정점 순서가 내는 법선과 같은 쪽이어야 한다. 반대로 주면 벽이
-            # 안쪽에서 조명돼 건물이 새까맣게 보인다(도로·지붕은 저장 법선과
-            # 정점 순서가 일치하는데 벽만 어긋나 있었다).
-            normal = (-dz / length, 0.0, dx / length)
-            builder.add_polygon([(x1, 0.0, z1), (x2, 0.0, z2),
-                                 (x2, height, z2), (x1, height, z1)], normal)
-
-        roof_triangles = triangulate(ring)
-        if roof_triangles:
-            builder.add_triangles([(x, height, z) for x, z in ring],
-                                  roof_triangles, UP)
+        for footprint in _footprints(ring, road):
+            _add_building(builder, footprint, building_height(tags))
     return builder
+
+
+def _add_building(builder: MeshBuilder, ring: list[tuple[float, float]],
+                  height: float) -> None:
+    # OSM 은 건물 링 방향을 보장하지 않는다. 벽 루프는 링 순서를 그대로
+    # 쓰므로(triangulate() 처럼 내부에서 정규화하지 않는다) 여기서
+    # 정규화하지 않으면 실제 데이터의 절반가량이 벽이 안쪽을 향한다.
+    # 음수 signed_area 가 바깥을 향하는 방향이다.
+    if _signed_area(ring) > 0:
+        ring = list(reversed(ring))
+
+    for (x1, z1), (x2, z2) in zip(ring, ring[1:] + ring[:1]):
+        dx, dz = x2 - x1, z2 - z1
+        length = math.hypot(dx, dz)
+        if length < 0.01:
+            continue
+        # 정점 순서가 내는 법선과 같은 쪽이어야 한다. 반대로 주면 벽이
+        # 안쪽에서 조명돼 건물이 새까맣게 보인다(도로·지붕은 저장 법선과
+        # 정점 순서가 일치하는데 벽만 어긋나 있었다).
+        normal = (-dz / length, 0.0, dx / length)
+        builder.add_polygon([(x1, 0.0, z1), (x2, 0.0, z2),
+                             (x2, height, z2), (x1, height, z1)], normal)
+
+    roof_triangles = triangulate(ring)
+    if roof_triangles:
+        builder.add_triangles([(x, height, z) for x, z in ring],
+                              roof_triangles, UP)
 
 
 MARKING_MIN_WIDTH = 9.0   # 이보다 좁으면 왕복 2차선 이하라 도색을 생략한다

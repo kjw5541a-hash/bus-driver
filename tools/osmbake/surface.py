@@ -108,7 +108,12 @@ def _add(builder: MeshBuilder, corners, heights) -> None:
 def build_surfaces(ways: list[dict], projector: Projector,
                    chunk_size: float = CHUNK_SIZE_M) -> tuple[MeshBuilder, MeshBuilder]:
     """(도로, 인도) 메쉬. 삼각형은 청크 칸을 넘지 않는다."""
-    road, top, slope = road_and_sidewalk(ways, projector)
+    return surface_meshes(*road_and_sidewalk(ways, projector), chunk_size)
+
+
+def surface_meshes(road, top, slope,
+                   chunk_size: float = CHUNK_SIZE_M) -> tuple[MeshBuilder, MeshBuilder]:
+    """road_and_sidewalk 결과로 (도로, 인도) 메쉬를 만든다."""
     road_builder = MeshBuilder()
     for corners in _triangles(road, chunk_size):
         _add(road_builder, corners, [0.0] * 3)

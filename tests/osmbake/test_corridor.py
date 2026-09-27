@@ -2,7 +2,8 @@
 import math
 import unittest
 
-from tools.osmbake.corridor import (_has_camera, corridor_bbox, near_path,
+from tools.osmbake.corridor import (_has_camera, clip_to_path, corridor_bbox,
+                                   near_path,
                                    place_poles, signal_candidates)
 from tools.osmbake.geo import Projector
 from tools.osmbake.graph import build_graph
@@ -46,6 +47,37 @@ class TestNearPath(unittest.TestCase):
         crossing = way(1, [1, 2], [(37.5001, 127.0005), (37.5200, 127.0005)])
         kept = near_path([crossing], self.path, self.projector, 250.0)
         self.assertEqual(len(kept), 1)
+
+
+class TestClipToPath(unittest.TestCase):
+    def setUp(self):
+        self.projector = Projector(37.500, 127.000)
+        self.path = project_path([(37.500, 127.000), (37.500, 127.002)],
+                                 self.projector)
+
+    def test_반경_밖_정점은_잘라낸다(self):
+        # 경로에서 북쪽으로 약 11 m, 111 m, 555 m, 1110 m 떨어진 정점 넷.
+        crossing = way(1, [1, 2, 3, 4],
+                       [(37.5001, 127.0005), (37.5010, 127.0005),
+                        (37.5050, 127.0005), (37.5100, 127.0005)])
+        clipped = clip_to_path([crossing], self.path, self.projector, 250.0)
+        self.assertEqual(len(clipped), 1)
+        self.assertEqual(clipped[0]["nodes"], [1, 2])
+        self.assertEqual(len(clipped[0]["geometry"]), 2)
+        self.assertEqual(clipped[0]["tags"], crossing["tags"])
+
+    def test_반경을_나갔다_들어오면_두_조각이다(self):
+        loop = way(1, [1, 2, 3, 4, 5, 6],
+                   [(37.5001, 127.0000), (37.5002, 127.0000),
+                    (37.5100, 127.0010), (37.5002, 127.0020),
+                    (37.5001, 127.0020), (37.5001, 127.0021)])
+        clipped = clip_to_path([loop], self.path, self.projector, 250.0)
+        self.assertEqual([c["nodes"] for c in clipped], [[1, 2], [4, 5, 6]])
+
+    def test_정점_하나만_걸치면_버린다(self):
+        touch = way(1, [1, 2], [(37.5001, 127.0005), (37.5100, 127.0005)])
+        self.assertEqual(
+            clip_to_path([touch], self.path, self.projector, 250.0), [])
 
 
 class TestSignalArms(unittest.TestCase):

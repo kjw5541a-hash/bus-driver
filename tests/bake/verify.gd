@@ -77,6 +77,15 @@ func _ready() -> void:
 	_check_stop_order()
 	_check_stops_on_sidewalk()
 
+	# 게임(city.gd)처럼 y=0 바닥 평면을 깐다. 인도 밖은 메쉬가 없어서, 없으면
+	# 급커브에서 인도로 올라선 바퀴가 허공에 빠져 전복한다(654 경로점 442).
+	# 지면 연속성 검사가 끝난 뒤에 깔아야 도로 구멍을 가리지 않는다.
+	var ground := StaticBody3D.new()
+	var plane := CollisionShape3D.new()
+	plane.shape = WorldBoundaryShape3D.new()
+	ground.add_child(plane)
+	add_child(ground)
+
 	bus = _make_bus()
 	bus.position = route[0] + Vector3.UP * 1.5
 	bus.look_at_from_position(bus.position, route[1] + Vector3.UP * 1.5, Vector3.UP)

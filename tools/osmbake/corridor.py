@@ -6,6 +6,9 @@
 import math
 import zlib
 
+import shapely
+from shapely.geometry import LineString
+
 from .geo import METERS_PER_DEG_LAT, Projector
 from .graph import RoadGraph
 from .mesh import (CURB_SLOPE_M, SIDEWALK_WIDTH, _on_roadway, _road_index,
@@ -72,6 +75,39 @@ def near_path(elements: list[dict], path_xz: list[tuple[float, float]],
                 kept.append(element)
                 break
     return kept
+
+
+def clip_to_path(ways: list[dict], path_xz: list[tuple[float, float]],
+                 projector: Projector, radius_m: float) -> list[dict]:
+    """way 를 경로에서 radius_m 안의 정점 구간들로 자른다.
+
+    near_path 는 한 점만 걸쳐도 way 전체를 남겨서, 긴 도로가 코리도 밖
+    2.6 km 까지 따라 들어왔다. 건물은 작아서 413 m 에서 끝나므로 바깥에
+    도로만 깔렸다. 정점 단위로 자르므로 반경 밖으로 한 구간 길이만큼은
+    나갈 수 있다. 조각마다 nodes 와 geometry 를 같이 자른다.
+    """
+    area = LineString(path_xz).buffer(radius_m)
+    shapely.prepare(area)
+    clipped = []
+    for w in ways:
+        geometry = w.get("geometry")
+        if not geometry:
+            continue
+        points = [projector.to_xz(g["lat"], g["lon"]) for g in geometry]
+        inside = shapely.contains_xy(area, [x for x, _ in points],
+                                     [z for _, z in points])
+        start = None
+        for i, hit in enumerate(list(inside) + [False]):
+            if hit and start is None:
+                start = i
+            elif not hit and start is not None:
+                if i - start >= 2:
+                    part = dict(w)
+                    part["geometry"] = geometry[start:i]
+                    part["nodes"] = w["nodes"][start:i]
+                    clipped.append(part)
+                start = None
+    return clipped
 
 
 def _bearing_deg(ax: float, az: float, bx: float, bz: float) -> float:

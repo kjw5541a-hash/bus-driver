@@ -10,6 +10,8 @@ import datetime
 import sys
 from pathlib import Path
 
+import shapely
+
 from . import corridor as corridor_mod
 from . import mesh as mesh_mod
 from . import surface as surface_mod
@@ -136,17 +138,24 @@ def bake(route_id: str, *, cache_dir: Path = CACHE_DIR, out_dir: Path = OUT_DIR,
         mesh_mod.outer_lane_offset(width, count)
         for width, (count, _) in zip(widths, lanes)])
     drive_xz = offset_right(route_xz, offsets)
-    stops = snap_stops(route_xz, stop_nodes, projector, road_widths=widths)
+
+    # 4. corridor. 도로는 코리도 안만 잘라 쓴다 — 건물 범위와 맞춘다.
+    near = corridor_mod.near_path(elements, route_xz, projector, radius_m)
+    roads = corridor_mod.clip_to_path(
+        [e for e in near if e.get("tags", {}).get("highway") in DRIVABLE_HIGHWAYS],
+        route_xz, projector, radius_m)
+    buildings = [e for e in near if "building" in e.get("tags", {})]
+    road_area, sidewalk_top, curb_slope = surface_mod.road_and_sidewalk(roads, projector)
+    shapely.prepare(road_area)
+    shapely.prepare(sidewalk_top)
+
+    stops = snap_stops(route_xz, stop_nodes, projector, sidewalk=sidewalk_top)
     # 정류장 좌표는 중심선 기준으로 잡았다. 진행도는 버스가 실제로 달리는
     # 주행선에서 다시 재야 정차 목표점이 맞는다.
     for stop in stops:
         stop["progress_m"] = round(
             progress_on_path(drive_xz, (stop["x"], stop["z"])), 1)
 
-    # 4. corridor
-    near = corridor_mod.near_path(elements, route_xz, projector, radius_m)
-    roads = [e for e in near if e.get("tags", {}).get("highway") in DRIVABLE_HIGHWAYS]
-    buildings = [e for e in near if "building" in e.get("tags", {})]
     signal_nodes = [e for e in elements if e.get("type") == "node"
                     and e.get("tags", {}).get("highway") == "traffic_signals"]
     signals = corridor_mod.signal_candidates(graph, signal_nodes, projector,
@@ -154,10 +163,11 @@ def bake(route_id: str, *, cache_dir: Path = CACHE_DIR, out_dir: Path = OUT_DIR,
     corridor_mod.place_poles(signals, roads, projector)
 
     # 5. mesh
-    road_builder, sidewalk_builder = surface_mod.build_surfaces(roads, projector)
+    road_builder, sidewalk_builder = surface_mod.surface_meshes(
+        road_area, sidewalk_top, curb_slope)
     road_chunks = mesh_mod.split_chunks(road_builder)
     building_chunks = mesh_mod.split_chunks(
-        mesh_mod.build_buildings(buildings, projector))
+        mesh_mod.build_buildings(buildings, projector, road=road_area))
     chunks: dict[str, dict[str, mesh_mod.MeshBuilder]] = {}
     for name, builder in road_chunks.items():
         chunks.setdefault(name, {})["road"] = builder

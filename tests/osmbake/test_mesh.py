@@ -2,6 +2,8 @@
 import math
 import unittest
 
+from shapely.geometry import box
+
 from tools.osmbake.geo import METERS_PER_DEG_LAT, Projector
 from tools.osmbake.mesh import (MeshBuilder, build_buildings,
                                  build_markings, building_height, lane_count,
@@ -161,6 +163,22 @@ class TestBuildBuildings(unittest.TestCase):
             (37.5000, 127.0000), (37.5000, 127.0002),
             (37.5002, 127.0002), (37.5002, 127.0000)])], self.projector)
         self.assertAlmostEqual(min(y for _x, y, _z in builder.positions), 0.0)
+
+    def test_차도와_겹친_부분은_깎는다(self):
+        # 건물은 x 0~17.7 m. 차도가 x 8 m 까지 덮는다.
+        builder = build_buildings([self._building([
+            (37.5000, 127.0000), (37.5000, 127.0002),
+            (37.5002, 127.0002), (37.5002, 127.0000)])], self.projector,
+            road=box(-5.0, -30.0, 8.0, 5.0))
+        self.assertGreater(builder.triangle_count(), 0)
+        self.assertGreaterEqual(min(x for x, _y, _z in builder.positions), 8.0 - 1e-6)
+
+    def test_차도에_묻힌_건물은_버린다(self):
+        builder = build_buildings([self._building([
+            (37.5000, 127.0000), (37.5000, 127.0002),
+            (37.5002, 127.0002), (37.5002, 127.0000)])], self.projector,
+            road=box(-5.0, -30.0, 30.0, 5.0))
+        self.assertEqual(builder.triangle_count(), 0)
 
     def test_점이_너무_적은_건물은_건너뛴다(self):
         degenerate = {"type": "way", "id": 2, "nodes": [1, 2],

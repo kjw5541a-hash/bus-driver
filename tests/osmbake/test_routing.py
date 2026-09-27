@@ -1,6 +1,8 @@
 """A* 경로 탐색: 최단 경로, 노선 멤버 우선, 우회."""
 import unittest
 
+from shapely.geometry import box
+
 from tools.osmbake.geo import Projector
 from tools.osmbake.graph import Edge, build_graph
 from tools.osmbake.routing import (astar, drive_offsets, offset_right,
@@ -253,23 +255,38 @@ class TestSidewalkStops(unittest.TestCase):
         self.path = project_path(
             [(37.500, 127.000), (37.500, 127.001), (37.500, 127.002)],
             self.projector)
-        # 도로 폭 20 m(primary). 반폭은 10 m 다.
-        self.widths = [20.0] * len(self.path)
+        # 우측 인도: 경로에서 +z 로 12~14 m 띠.
+        self.sidewalk = box(-10.0, 12.0, 300.0, 14.0)
 
     def test_진행방향_좌측_정류장은_버린다(self):
         # 북쪽(좌측) 정류장은 반대 방향 노선의 것이다.
         stops = snap_stops(self.path,
                            [stop_node(1, 37.50005, 127.0005, "반대편")],
-                           self.projector, road_widths=self.widths)
+                           self.projector, sidewalk=self.sidewalk)
         self.assertEqual(stops, [])
 
     def test_우측_정류장을_차도_밖으로_옮긴다(self):
         stops = snap_stops(self.path,
                            [stop_node(1, 37.49995, 127.0005, "우측")],
-                           self.projector, road_widths=self.widths)
+                           self.projector, sidewalk=self.sidewalk)
         self.assertEqual(len(stops), 1)
-        # 경로에서 우측(+z)으로 반폭 10 m 밖, 곧 인도 위여야 한다.
-        self.assertGreater(stops[0]["z"], 10.0)
+        # 인도 띠 한가운데로 간다.
+        self.assertAlmostEqual(stops[0]["z"], 13.0, delta=0.3)
+
+    def test_가장_가까운_우측_인도로_간다(self):
+        # 버스전용차로 옆 차도를 건너 먼 인도로 가는 경우. 경로에서 3 m 떨어진
+        # 노드라도 가까운 인도가 없으면 25 m 밖 인도까지 나간다.
+        far = box(-10.0, 25.0, 300.0, 27.0)
+        stops = snap_stops(self.path,
+                           [stop_node(1, 37.49997, 127.0005, "우측")],
+                           self.projector, sidewalk=far)
+        self.assertAlmostEqual(stops[0]["z"], 26.0, delta=0.3)
+
+    def test_우측에_인도가_없으면_버린다(self):
+        stops = snap_stops(self.path,
+                           [stop_node(1, 37.49995, 127.0005, "우측")],
+                           self.projector, sidewalk=box(-10.0, 40.0, 300.0, 42.0))
+        self.assertEqual(stops, [])
 
 
 class TestProgressOnPath(unittest.TestCase):
