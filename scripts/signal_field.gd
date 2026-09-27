@@ -13,6 +13,8 @@ const LAMP_RADIUS := 0.25
 const LAMP_SPACING := 0.62
 const STOP_LINE_MARGIN_M := 2.0
 const DEFAULT_HALF_WIDTH := 7.5
+const STOP_LINE_THICKNESS := 0.4
+const STOP_LINE_Y := 0.03    # 차선 도색(0.02) 위
 
 # 기둥은 차도가 아니라 인도 위에 선다. 베이크(tools/osmbake/mesh.py)가 도로
 # 가장자리 밖으로 연석 경사면 0.25 m, 그다음 인도 2 m 를 깐다. 그 한가운데다.
@@ -35,6 +37,7 @@ var updated_count := 0
 # 기둥이 차도 밖으로 얼마나 나가 있는지의 최솟값. 기둥이 도로 위로 되돌아오는
 # 회귀를 drive_smoke 가 잡는다.
 var min_pole_clearance := INF
+var stop_line_count := 0
 
 # [{"lamps": [MeshInstance3D x3], "offset": float, "axis": int, "phase": int}]
 var _heads: Array = []
@@ -48,6 +51,8 @@ var _camera_mesh: BoxMesh
 var _arm_mesh: BoxMesh
 var _pole_material: StandardMaterial3D
 var _camera_material: StandardMaterial3D
+var _stop_mesh: BoxMesh
+var _stop_material: StandardMaterial3D
 
 func build(signals: Array) -> void:
 	_make_shared_resources()
@@ -74,6 +79,17 @@ func build(signals: Array) -> void:
 					lateral = float(laterals[axis * 2 + way])
 					back = float(backs[axis * 2 + way])
 				_add_head(center, forward, half, lateral, back, offset, axis, has_camera)
+		if entry.has("arms"):
+			for arm in entry["arms"]:
+				if arm["inbound"]:
+					_add_arm_stop_line(arm, half)
+		else:
+			for axis in 2:
+				for way in 2:
+					var inbound := TrafficSignal.direction_of(float(entry["axis_deg"][axis])) \
+						* (1.0 if way == 0 else -1.0)
+					_add_stop_line(center - inbound * (half + STOP_LINE_MARGIN_M),
+						inbound, half * 2.0, false)
 
 func _make_shared_resources() -> void:
 	# 등마다 새 머티리얼을 만들면 372 x 3 = 1116 개가 된다. 6개를 공유하고
@@ -117,6 +133,13 @@ func _make_shared_resources() -> void:
 
 	_camera_material = StandardMaterial3D.new()
 	_camera_material.albedo_color = Color(0.92, 0.92, 0.90)
+
+	# 정지선은 단위 판 하나를 공유하고 변환으로 늘린다.
+	_stop_mesh = BoxMesh.new()
+	_stop_mesh.size = Vector3(1.0, 0.01, 1.0)
+	_stop_material = StandardMaterial3D.new()
+	_stop_material.albedo_color = Color(0.95, 0.95, 0.95)
+	_stop_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 
 func _add_head(center: Vector3, forward: Vector3, half: float,
 		pole_lateral: float, pole_back: float, offset: float, axis: int,
@@ -188,6 +211,29 @@ func _add_head(center: Vector3, forward: Vector3, half: float,
 		_grid[cell] = PackedInt32Array()
 	_grid[cell].append(index)
 	head_count += 1
+
+func _add_arm_stop_line(arm: Dictionary, half: float) -> void:
+	"""갈래를 따라 교차로 중심에서 반폭 + 2 m. 위반 판정 위치와 같다."""
+	var line := LanePath.make(LanePath.arm_points(arm))
+	var at := minf(half + STOP_LINE_MARGIN_M, line.length_m())
+	# 갈래 점은 교차로에서 바깥으로 간다. 들어오는 차의 진행 방향은 그 반대다.
+	var inbound := -line.direction_at(at)
+	var oneway: bool = not arm["outbound"]
+	_add_stop_line(line.sample(at), inbound, float(arm.get("width", half * 2.0)), oneway)
+
+func _add_stop_line(point: Vector3, inbound: Vector3, width: float, oneway: bool) -> void:
+	"""왕복이면 들어오는 쪽 절반(중앙선에서 오른쪽 가장자리까지), 일방통행이면 전체 폭."""
+	var right := Vector3(-inbound.z, 0.0, inbound.x)
+	var length := width if oneway else width * 0.5
+	var middle := point if oneway else point + right * width * 0.25
+	var stripe := MeshInstance3D.new()
+	stripe.mesh = _stop_mesh
+	stripe.material_override = _stop_material
+	stripe.transform = Transform3D(
+		Basis(right * length, Vector3.UP, inbound * STOP_LINE_THICKNESS),
+		Vector3(middle.x, STOP_LINE_Y, middle.z))
+	add_child(stripe)
+	stop_line_count += 1
 
 func _physics_process(_delta: float) -> void:
 	if target == null or _heads.is_empty():

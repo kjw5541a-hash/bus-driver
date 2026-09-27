@@ -141,6 +141,20 @@ func _report() -> void:
 	ok(drive.signal_field.head_count == drive.data.signals.size() * 4,
 		"기둥이 %d 개인데 신호는 %d 개다"
 		% [drive.signal_field.head_count, drive.data.signals.size()])
+	var expected_lines := 0
+	for entry in drive.data.signals:
+		if not entry.has("axis_deg") or entry["axis_deg"].size() < 2:
+			continue
+		if entry.has("arms"):
+			for arm in entry["arms"]:
+				if arm["inbound"]:
+					expected_lines += 1
+		else:
+			expected_lines += 4
+	ok(drive.signal_field.stop_line_count == expected_lines,
+		"정지선이 %d 개인데 %d 개여야 한다"
+		% [drive.signal_field.stop_line_count, expected_lines])
+	ok(expected_lines > 0, "정지선이 하나도 없다")
 	ok(drive.signal_field.min_pole_clearance > 0.0,
 		"신호등 기둥이 차도 위에 서 있다 (여유 %.2f m)"
 		% drive.signal_field.min_pole_clearance)
