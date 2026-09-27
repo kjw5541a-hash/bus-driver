@@ -31,5 +31,10 @@ func on_stop_served(stop_index: int, boarded: int) -> void:
 		is_finished = true
 		finished.emit()
 
+func add_penalty(seconds: float) -> void:
+	"""벌로 남은 시간을 깎는다. 경과 시간에 더하는 것과 같다."""
+	if is_running:
+		elapsed_s += seconds
+
 func on_busted() -> void:
 	is_running = false

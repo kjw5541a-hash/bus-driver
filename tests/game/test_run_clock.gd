@@ -7,6 +7,7 @@ var _finished_count := 0
 func _ready() -> void:
 	await _test_runs_and_finishes()
 	await _test_busted_stops()
+	await _test_penalty()
 	_test_text()
 	finish()
 
@@ -19,6 +20,17 @@ func _make() -> RunClock:
 	await get_tree().physics_frame
 	await get_tree().physics_frame
 	return clock
+
+func _test_penalty() -> void:
+	var clock := await _make()
+	var before := clock.elapsed_s
+	clock.add_penalty(5.0)
+	equal_approx(clock.elapsed_s - before, 5.0, 0.0001, "벌칙 5 초가 안 붙었다")
+	clock.on_busted()
+	var frozen := clock.elapsed_s
+	clock.add_penalty(5.0)
+	equal_approx(clock.elapsed_s, frozen, 0.0001, "멈춘 시계에 벌칙이 붙었다")
+	clock.queue_free()
 
 func _test_runs_and_finishes() -> void:
 	var clock := await _make()

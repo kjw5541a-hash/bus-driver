@@ -118,6 +118,7 @@ func _ready() -> void:
 	boarding.boarding_finished.connect(func(boarded: int, _alighted: int) -> void:
 		clock.on_stop_served(boarding.boarding_index, boarded))
 	watch.busted.connect(clock.on_busted)
+	crash.crashed.connect(func() -> void: clock.add_penalty(CrashWatch.PENALTY_S))
 	clock.finished.connect(_on_finished)
 
 	clock_hud = ClockHud.new()
@@ -174,10 +175,6 @@ func _physics_process(delta: float) -> void:
 		bus.apply_axes(0.0, 0.0, 1.0, false, delta)
 		if Input.is_key_pressed(KEY_R):
 			get_tree().reload_current_scene()
-		return
-	if crash != null and crash.is_stopping:
-		# 사고. 정해진 시간 동안 브레이크만 건다. 시계는 흐른다.
-		bus.apply_axes(0.0, 0.0, 1.0, false, delta)
 		return
 	if boarding != null and boarding.is_boarding:
 		# 문이 열려 있다. 브레이크만 걸어 버스를 붙잡는다. 승하차 시간을

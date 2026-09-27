@@ -7,6 +7,7 @@ class_name BoardingHud
 # 쓴다. 적발 패널이 위에 오도록 layer 는 ViolationHud(10) 보다 낮게 둔다.
 
 const MISS_FLASH_S := 1.5
+const CRASH_FLASH_S := 2.0
 const CHIME_RATE := 22050
 
 var bell_count := 0          # 테스트가 차임이 울렸는지 본다
@@ -34,7 +35,7 @@ func _ready() -> void:
 	add_child(box)
 
 	_crash_label = Label.new()
-	_crash_label.text = "사고 — %d초 정차" % int(CrashWatch.CRASH_STOP_S)
+	_crash_label.text = "사고 — 남은 시간 −%d초" % int(CrashWatch.PENALTY_S)
 	_crash_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_crash_label.add_theme_font_size_override("font_size", 22)
 	_crash_label.add_theme_color_override("font_color", Color(1.0, 0.35, 0.3))
@@ -131,7 +132,7 @@ func on_boarding_finished(boarded: int, alighted: int) -> void:
 
 func on_crashed() -> void:
 	_crash_label.visible = true
-	_crash_left = CrashWatch.CRASH_STOP_S
+	_crash_left = CRASH_FLASH_S
 
 func on_stop_missed(stop_index: int) -> void:
 	_miss_label.text = "%s 통과" % _name_of(stop_index)

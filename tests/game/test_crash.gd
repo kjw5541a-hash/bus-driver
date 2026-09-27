@@ -1,7 +1,8 @@
 extends TestCase
 # 버스를 세워 둔 차에 밀어 넣어 사고 판정을 본다. 접촉 보고가 실제 물리에서
 # 오는지가 요점이라 진짜 Bus 와 바닥을 쓴다.
-# 첫 사고 -> 5 초 정지 -> 3 초 유예(계속 밀어도 안 셈) -> 둘째 사고.
+# 첫 사고 -> 버스는 안 세운다(물리로 튕김) -> 3 초 유예(계속 밀어도 안 셈)
+# -> 둘째 사고.
 
 const TIMEOUT_S := 40.0
 const THROTTLE := 0.5
@@ -10,8 +11,7 @@ var bus: Bus
 var traffic: Traffic
 var crash: CrashWatch
 var elapsed := 0.0
-var stop_started := -1.0
-var stop_ended := -1.0
+var first_at := -1.0
 var second_at := -1.0
 var done := false
 
@@ -45,14 +45,10 @@ func _physics_process(delta: float) -> void:
 	if done or crash == null:
 		return
 	elapsed += delta
-	if crash.is_stopping:
-		bus.apply_axes(0.0, 0.0, 1.0, false, delta)
-		if stop_started < 0.0:
-			stop_started = elapsed
-	else:
-		if stop_started >= 0.0 and stop_ended < 0.0:
-			stop_ended = elapsed
-		bus.apply_axes(0.0, THROTTLE, 0.0, false, delta)
+	# 사고가 나도 계속 가속한다. CrashWatch 가 버스를 붙잡지 않아야 한다.
+	bus.apply_axes(0.0, THROTTLE, 0.0, false, delta)
+	if crash.crashes >= 1 and first_at < 0.0:
+		first_at = elapsed
 	if crash.crashes >= 2 and second_at < 0.0:
 		second_at = elapsed
 	if second_at >= 0.0 or elapsed > TIMEOUT_S:
@@ -60,10 +56,9 @@ func _physics_process(delta: float) -> void:
 
 func _report() -> void:
 	done = true
-	ok(stop_started >= 0.0, "사고가 한 번도 안 났다")
-	ok(stop_ended >= 0.0, "사고 정지가 안 끝났다")
-	equal_approx(stop_ended - stop_started, CrashWatch.CRASH_STOP_S, 0.1, "사고 정지 시간")
+	ok(first_at >= 0.0, "사고가 한 번도 안 났다")
+	ok(not "is_stopping" in crash, "CrashWatch 가 아직 버스를 세운다")
 	ok(second_at >= 0.0, "유예가 끝난 뒤 다시 밀어도 사고가 안 세어졌다")
-	ok(second_at - stop_ended >= CrashWatch.CRASH_GRACE_S - 0.05,
-		"유예 %.2f 초 만에 다시 셌다" % (second_at - stop_ended))
+	ok(second_at - first_at >= CrashWatch.CRASH_GRACE_S - 0.05,
+		"유예 %.2f 초 만에 다시 셌다" % (second_at - first_at))
 	finish()
