@@ -82,4 +82,20 @@ func _ready() -> void:
 	ok(part.route_width.size() == part.route.size(),
 		"잘린 뒤 route_width %d 개, route %d 개"
 		% [part.route_width.size(), part.route.size()])
+	# 경로점별 차로 정보. 교통이 이것으로 차선 중앙과 도로 중심선을 잡는다.
+	for key in ["route_lanes", "route_oneway", "route_offset"]:
+		ok(data.get(key).size() == data.route.size(), "%s 길이가 다르다" % key)
+		ok(part.get(key).size() == part.route.size(), "잘린 뒤 %s 길이가 다르다" % key)
+	# 옛 형식(키 없음)이면 차선 2, 왕복, 오프셋 w/4.
+	var old := RouteData.new()
+	old.route = PackedVector3Array([Vector3.ZERO, Vector3(0.0, 0.0, -100.0)])
+	old.ensure_lanes()
+	ok(old.route_lanes == PackedInt32Array([2, 2]), "옛 형식 차선 수")
+	ok(old.route_oneway == PackedByteArray([0, 0]), "옛 형식 일방통행")
+	equal_approx(old.route_offset[0], RouteData.DEFAULT_ROAD_WIDTH_M * 0.25, 0.001,
+		"옛 형식 오프셋")
+	# 북쪽 진행의 왼쪽은 서(-X). 중심선은 경로를 왼쪽으로 오프셋만큼 민 것이다.
+	var center := old.center_line()
+	equal_approx(center[0].x, -1.75, 0.001, "중심선 x")
+	equal_approx(center[1].z, -100.0, 0.001, "중심선 z")
 	finish()

@@ -24,6 +24,9 @@ var from_name := ""
 var to_name := ""
 var route: PackedVector3Array = []
 var route_width: PackedFloat32Array = []   # 경로점별 도로 폭. route 와 같은 길이
+var route_lanes: PackedInt32Array = []     # 경로점별 전체 차선 수
+var route_oneway: PackedByteArray = []     # 1 이면 일방통행(마주 오는 차 없음)
+var route_offset: PackedFloat32Array = []  # 도로 중심에서 주행선까지 우측 거리
 var stops: Array = []
 var chunks: Array = []
 var signals: Array = []
@@ -53,11 +56,13 @@ static func load_route(route_id: String) -> RouteData:
 		data.route.append(Vector3(point[0], 0.0, point[1]))
 	for width in parsed.get("route_width", []):
 		data.route_width.append(float(width))
-	if data.route_width.size() != data.route.size():
-		# 옛 산출물에는 폭이 없다. 기본 폭으로 채운다.
-		data.route_width = PackedFloat32Array()
-		data.route_width.resize(data.route.size())
-		data.route_width.fill(DEFAULT_ROAD_WIDTH_M)
+	for count in parsed.get("route_lanes", []):
+		data.route_lanes.append(int(count))
+	for flag in parsed.get("route_oneway", []):
+		data.route_oneway.append(int(flag))
+	for offset in parsed.get("route_offset", []):
+		data.route_offset.append(float(offset))
+	data.ensure_lanes()
 	data.stops = parsed.get("stops", [])
 	data.chunks = parsed.get("chunks", [])
 	# 구 버전 산출물에는 signals 가 없거나 axis_deg 가 빠져 있다. 비어 있으면
@@ -152,9 +157,12 @@ func slice(index: int) -> RouteData:
 	part.section = index
 	part.section_count = bounds.size()
 	part.route = _route_between(start_m, end_m)
-	# 손수 만든 RouteData(테스트)는 폭이 없다. 있을 때만 자른다.
-	if route_width.size() == route.size():
-		part.route_width = _widths_between(start_m, end_m)
+	ensure_lanes()
+	for point_index in _indices_between(start_m, end_m):
+		part.route_width.append(route_width[point_index])
+		part.route_lanes.append(route_lanes[point_index])
+		part.route_oneway.append(route_oneway[point_index])
+		part.route_offset.append(route_offset[point_index])
 	for stop_index in range(range_of.x, range_of.y + 1):
 		var stop: Dictionary = stops[stop_index].duplicate()
 		stop["progress_m"] = float(stop.get("progress_m", 0.0)) - start_m
@@ -189,22 +197,56 @@ func _route_between(start_m: float, end_m: float) -> PackedVector3Array:
 	part.append(point_at_progress(end_m))
 	return part
 
-func _widths_between(start_m: float, end_m: float) -> PackedFloat32Array:
-	"""_route_between 과 같은 점들의 폭. 보간점은 가까운 원래 점의 폭."""
-	var part := PackedFloat32Array([_width_at_progress(start_m)])
+func _indices_between(start_m: float, end_m: float) -> PackedInt32Array:
+	"""_route_between 과 같은 점들의 원래 인덱스. 보간점은 가까운 원래 점."""
+	var part := PackedInt32Array([_index_at_progress(start_m)])
 	var travelled := 0.0
 	for index in range(1, route.size()):
 		travelled += route[index - 1].distance_to(route[index])
 		if travelled > start_m and travelled < end_m:
-			part.append(route_width[index])
-	part.append(_width_at_progress(end_m))
+			part.append(index)
+	part.append(_index_at_progress(end_m))
 	return part
 
-func _width_at_progress(distance_m: float) -> float:
+func _index_at_progress(distance_m: float) -> int:
 	var travelled := 0.0
 	for index in range(1, route.size()):
 		var span := route[index - 1].distance_to(route[index])
 		if travelled + span >= distance_m:
-			return route_width[index - 1] if distance_m - travelled < span * 0.5 else route_width[index]
+			return index - 1 if distance_m - travelled < span * 0.5 else index
 		travelled += span
-	return route_width[route_width.size() - 1]
+	return route.size() - 1
+
+func ensure_lanes() -> void:
+	"""경로와 길이가 안 맞는 차로 배열을 채운다. 옛 산출물과 테스트가 손수 만든
+	RouteData 에는 이것들이 없다. 폭 7 m·차선 2·왕복·오프셋 w/4 는 차로 정보가
+	생기기 전 동작과 같다."""
+	var count := route.size()
+	if route_width.size() != count:
+		route_width = PackedFloat32Array()
+		route_width.resize(count)
+		route_width.fill(DEFAULT_ROAD_WIDTH_M)
+	if route_lanes.size() != count:
+		route_lanes = PackedInt32Array()
+		route_lanes.resize(count)
+		route_lanes.fill(2)
+	if route_oneway.size() != count:
+		route_oneway = PackedByteArray()
+		route_oneway.resize(count)
+		route_oneway.fill(0)
+	if route_offset.size() != count:
+		route_offset = PackedFloat32Array()
+		for width in route_width:
+			route_offset.append(width * 0.25)
+
+func center_line() -> PackedVector3Array:
+	"""경로점마다 왼쪽으로 route_offset 만큼 민 도로 중심선."""
+	ensure_lanes()
+	var line := PackedVector3Array()
+	for index in route.size():
+		var forward := route[mini(index + 1, route.size() - 1)] - route[maxi(index - 1, 0)]
+		forward.y = 0.0
+		forward = forward.normalized() if forward.length_squared() > 0.0001 else Vector3.FORWARD
+		# 진행 방향 (fx, fz) 의 왼쪽은 (fz, -fx) 다.
+		line.append(route[index] + Vector3(forward.z, 0.0, -forward.x) * route_offset[index])
+	return line
