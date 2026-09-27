@@ -20,6 +20,7 @@ var stopped_at_red := false
 var saw_cross := false
 var oneway_oncoming := 0    # 일방통행 구간을 달린 마주 오는 차
 var saw_lanes := false      # 같은 방향 차가 두 차선 이상에 퍼진 적이 있다
+var off_road := 0           # 교차 차량이 교차로 갈래에서 벗어난 횟수
 var multi_lane := false     # 방향당 두 차선 이상인 구간이 있다(옛 json 은 없다)
 var start_distances: Array = []
 var done := false
@@ -72,6 +73,7 @@ func _check(t: float) -> void:
 	for car in traffic.cars:
 		if car.crossing >= 0:
 			saw_cross = true
+			_check_on_arms(car)
 		if car.road == null or car.parked:
 			continue
 		if car.road == traffic.backward_road \
@@ -110,6 +112,21 @@ func _check(t: float) -> void:
 				if gap < MIN_BUMPER_GAP_M and other.distance > car.distance:
 					tight += 1
 
+# 교차 차량은 어느 갈래 선에서든 반폭 + 1 m 안에 있어야 한다. 옛 json 은 갈래가
+# 없어 건너뛴다.
+func _check_on_arms(car) -> void:
+	var entry: Dictionary = traffic._signals[car.crossing]
+	if not entry.has("arms") or entry["arms"].is_empty():
+		return
+	var half := float(entry.get("half_width", ViolationWatch.DEFAULT_HALF_WIDTH))
+	var best := INF
+	for arm in entry["arms"]:
+		var points := LanePath.arm_points(arm)
+		if points.size() >= 2:
+			best = minf(best, absf(LanePath.make(points).project(car.body.position).y))
+	if best > half + 1.0:
+		off_road += 1
+
 func _report() -> void:
 	done = true
 	ok(red_runs == 0, "적색 정지선을 넘은 차가 %d 번" % red_runs)
@@ -117,6 +134,7 @@ func _report() -> void:
 	ok(tight == 0, "범퍼 간격 %.0f m 미만이 %d 번" % [MIN_BUMPER_GAP_M, tight])
 	ok(saw_cross, "교차 차량이 안 생겼다")
 	ok(oneway_oncoming == 0, "일방통행 구간을 마주 오는 차가 %d 번 달렸다" % oneway_oncoming)
+	ok(off_road == 0, "교차 차량이 갈래 밖에 %d 번" % off_road)
 	ok(saw_lanes or not multi_lane, "같은 방향 차가 한 차선만 썼다")
 	var moved := false
 	for index in traffic.cars.size():

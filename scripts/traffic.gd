@@ -34,6 +34,9 @@ const NO_CHANGE_AFTER_M := 10.0
 const CHANGE_GAIN_M := 10.0       # 옮길 차선의 앞 간격이 지금보다 이만큼은 커야 한다
 const REAR_GAP_M := 8.0           # 옮길 차선 뒤차와 최소 간격
 const REAR_GAP_S := 1.0           # 뒤차 속도 1 m/s 마다 더 벌릴 간격
+const ARM_AXIS_DEG := 45.0        # 교차 축 방위각에서 이만큼 안의 갈래만 쓴다
+const ARM_FACING_DEG := 45.0      # 두 갈래가 180° ± 이 안이면 마주 본다
+const ARM_BEARING_M := 10.0       # 갈래 방위각은 첫 점에서 이만큼 간 점으로 잰다
 const POLICE_SIGHT_M := 80.0
 const BODY_SIZE := Vector3(1.8, 1.4, 4.6)
 const CAR_HALF_LENGTH_M := 2.3    # BODY_SIZE.z 의 절반
@@ -383,18 +386,62 @@ func _update_crossings(bus_point: Vector3) -> void:
 			car.parked = false
 
 func _crossing_lanes(index: int, line: Dictionary) -> Array:
-	"""버스가 지나지 않는 축으로 교차로를 가로지르는 양방향 차선 둘."""
+	"""버스가 지나지 않는 축으로 교차로를 가로지르는 차선들. 갈래가 있으면
+	마주 보는 갈래 한 쌍 위로, 옛 산출물이면 축 방위각 직선으로 낸다."""
 	if not _cross_lanes.has(index):
 		var entry: Dictionary = _signals[index]
 		var axis := 1 - int(line["axis"])
 		var bearing := float(entry["axis_deg"][axis])
-		var center := Vector3(float(entry["x"]), 0.0, float(entry["z"]))
 		var half := float(entry.get("half_width", ViolationWatch.DEFAULT_HALF_WIDTH))
 		var offset := float(line["offset"])
-		_cross_lanes[index] = [
-			LanePath.crossing(center, bearing, half, axis, offset),
-			LanePath.crossing(center, bearing + 180.0, half, axis, offset)]
+		if entry.has("arms"):
+			_cross_lanes[index] = _arm_lanes(entry["arms"], bearing, half, axis, offset)
+		else:
+			var center := Vector3(float(entry["x"]), 0.0, float(entry["z"]))
+			_cross_lanes[index] = [
+				LanePath.crossing(center, bearing, half, axis, offset),
+				LanePath.crossing(center, bearing + 180.0, half, axis, offset)]
 	return _cross_lanes[index]
+
+func _arm_lanes(arms: Array, bearing: float, half: float, axis: int, offset: float) -> Array:
+	"""교차 축 방위각 가까이 마주 보는 갈래 한 쌍 위 차선. 없으면 빈 배열이고,
+	그 교차로에는 교차 차량이 없다. T자 교차로에서 도로 없는 쪽으로 달리는 것보다
+	낫다."""
+	var near: Array = []   # [갈래, 방위각]
+	for arm in arms:
+		var points := LanePath.arm_points(arm)
+		if points.size() < 2:
+			continue
+		var heading := TrafficSignal.bearing_of(
+			LanePath.make(points).sample(ARM_BEARING_M) - points[0])
+		if _axis_delta(heading, bearing) <= ARM_AXIS_DEG:
+			near.append([arm, heading])
+	var pair: Array = []
+	var best := ARM_FACING_DEG
+	for i in near.size():
+		for j in range(i + 1, near.size()):
+			var facing := absf(180.0 - _angle_delta(near[i][1], near[j][1]))
+			if facing <= best:
+				best = facing
+				pair = [near[i][0], near[j][0]]
+	var lanes: Array = []
+	if pair.is_empty():
+		return lanes
+	for way in [[pair[0], pair[1]], [pair[1], pair[0]]]:
+		if way[0]["inbound"] and way[1]["outbound"]:
+			var lane := LanePath.from_arms(way[0], way[1], half, axis, offset)
+			if lane != null:
+				lanes.append(lane)
+	return lanes
+
+static func _angle_delta(a: float, b: float) -> float:
+	"""두 방위각 사이 각(0~180)."""
+	return absf(fposmod(a - b + 180.0, 360.0) - 180.0)
+
+static func _axis_delta(a: float, b: float) -> float:
+	"""축(방향 무시) 사이 각(0~90)."""
+	var delta := _angle_delta(a, b)
+	return minf(delta, 180.0 - delta)
 
 func _idle_car() -> Car:
 	for car in cars:
