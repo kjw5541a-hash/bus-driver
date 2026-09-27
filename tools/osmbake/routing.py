@@ -82,6 +82,39 @@ def path_widths(graph: RoadGraph, edges: list[Edge]) -> list[float]:
     return widths
 
 
+def path_lanes(edges: list[Edge]) -> list[tuple[int, bool]]:
+    """path_widths 와 같은 길이의 (차선 수, 일방통행) 목록.
+
+    두 도로가 만나는 점은 path_widths 가 그 점의 폭을 가져온 엣지를 따른다.
+    폭과 차선 수가 다른 도로에서 오면 차선 중앙이 도로 밖으로 나간다.
+    """
+    lanes: list[tuple[int, bool]] = []
+    previous = None
+    for edge in edges:
+        count = len(edge.node_ids)
+        if lanes:
+            if edge.width < previous.width:
+                lanes[-1] = (edge.lanes, edge.oneway)
+            count -= 1
+        lanes += [(edge.lanes, edge.oneway)] * count
+        previous = edge
+    return lanes
+
+
+def drive_offsets(path_xz: list[tuple[float, float]],
+                  offsets: list[float]) -> list[float]:
+    """offset_right 가 실제로 미는 거리. 급커브 꼭짓점과 이웃은 0 이다.
+
+    급커브 꼭짓점과 그 이웃은 중심선에 둔다. 우회전이면 우측 차선이 커브
+    안쪽이라 반경이 더 줄어 버스가 연석을 넘는다. 꼭짓점만 풀면 이웃 점과
+    사이에 꺾임이 생긴다. 실제 버스도 이런 데서는 크게 돈다.
+    """
+    return [0.0 if max(_turn_deg(path_xz, near)
+                       for near in (index - 1, index, index + 1)) > SHARP_TURN_DEG
+            else offsets[index]
+            for index in range(len(path_xz))]
+
+
 def _tangent(path_xz: list[tuple[float, float]], index: int) -> tuple[float, float]:
     """점에서의 진행 방향 단위벡터. 꺾이는 점에서는 앞뒤 구간의 평균이다."""
     parts = []
@@ -117,16 +150,10 @@ def offset_right(path_xz: list[tuple[float, float]],
     줄지만, 늘어나서 도로 밖으로 나가는 쪽보다 낫다.
     """
     moved = []
+    distances = drive_offsets(path_xz, offsets)
     for index, (x, z) in enumerate(path_xz):
         tx, tz = _tangent(path_xz, index)
-        distance = offsets[index]
-        if max(_turn_deg(path_xz, near)
-               for near in (index - 1, index, index + 1)) > SHARP_TURN_DEG:
-            # 급커브 꼭짓점과 그 이웃은 중심선에 둔다. 우회전이면 우측 차선이
-            # 커브 안쪽이라 반경이 더 줄어 버스가 연석을 넘는다. 꼭짓점만
-            # 풀면 이웃 점과 사이에 꺾임이 생긴다. 실제 버스도 이런 데서는
-            # 크게 돈다.
-            distance = 0.0
+        distance = distances[index]
         moved.append((x - tz * distance, z + tx * distance))
     return moved
 

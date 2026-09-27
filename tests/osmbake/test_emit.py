@@ -39,7 +39,8 @@ class TestWriteRouteJson(unittest.TestCase):
 
     def _write(self, **overrides):
         kwargs = dict(origin=(37.5, 127.0), route_xz=[(0.0, 0.0), (10.0, 0.0)],
-                      route_width=[7.0, 7.0],
+                      route_width=[7.0, 7.0], route_lanes=[2, 2],
+                      route_oneway=[False, False], route_offset=[1.75, 1.75],
                       stops=self.stops, signals=[],
                       chunks=[{"name": "chunk_0_0", "min": [0.0, 0.0], "max": [10.0, 0.0]}],
                       baked_at="2026-09-22")
@@ -56,7 +57,8 @@ class TestWriteRouteJson(unittest.TestCase):
         self._write()
         payload = json.loads(self.path.read_text(encoding="utf-8"))
         for key in ("id", "name", "from", "to", "origin", "attribution",
-                    "osm_relation", "baked_at", "route", "route_width", "stops",
+                    "osm_relation", "baked_at", "route", "route_width",
+                    "route_lanes", "route_oneway", "route_offset", "stops",
                     "signals", "chunks"):
             self.assertIn(key, payload)
 
@@ -68,6 +70,18 @@ class TestWriteRouteJson(unittest.TestCase):
     def test_route_width_길이가_다르면_거부한다(self):
         with self.assertRaises(ValueError):
             self._write(route_width=[7.0])
+
+    def test_차로_정보_길이가_다르면_거부한다(self):
+        for key in ("route_lanes", "route_oneway", "route_offset"):
+            with self.subTest(key=key), self.assertRaises(ValueError):
+                self._write(**{key: [1]})
+
+    def test_차로_정보를_쓴다(self):
+        payload = self._write(route_oneway=[True, False],
+                              route_offset=[1.754, 1.75])
+        self.assertEqual(payload["route_lanes"], [2, 2])
+        self.assertEqual(payload["route_oneway"], [1, 0])
+        self.assertEqual(payload["route_offset"], [1.75, 1.75])
 
     def test_정류장은_진행도_오름차순으로_저장된다(self):
         self._write(stops=list(reversed(self.stops)))

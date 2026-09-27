@@ -16,6 +16,19 @@ def way(way_id, node_ids, coords, **tags):
 
 
 class TestBuildGraph(unittest.TestCase):
+    def test_일방통행_엣지는_oneway_와_차선_수를_든다(self):
+        g = build_graph([way(1, [10, 11], [(37.5, 127.0), (37.5, 127.001)],
+                             oneway="yes", lanes="3")])
+        edge = g.adj[10][0]
+        self.assertTrue(edge.oneway)
+        self.assertEqual(edge.lanes, 3)
+
+    def test_왕복_엣지는_oneway_가_아니다(self):
+        g = build_graph([way(1, [10, 11], [(37.5, 127.0), (37.5, 127.001)],
+                             highway="secondary")])
+        self.assertFalse(g.adj[10][0].oneway)
+        self.assertEqual(g.adj[10][0].lanes, 4)
+
     def test_단순한_길은_엣지_하나(self):
         g = build_graph([way(1, [10, 11], [(37.5, 127.0), (37.5, 127.001)])])
         self.assertEqual(len(g.adj[10]), 1)

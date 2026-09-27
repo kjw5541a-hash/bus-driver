@@ -8,7 +8,7 @@ ATTRIBUTION = "© OpenStreetMap contributors (ODbL)"
 
 
 def write_route_json(path: Path, spec: RouteSpec, *, origin, route_xz, route_width,
-                     stops, signals, chunks, baked_at: str) -> dict:
+                     route_lanes, route_oneway, route_offset, stops, signals, chunks, baked_at: str) -> dict:
     """route JSON 파일을 쓴다.
 
     Args:
@@ -17,6 +17,9 @@ def write_route_json(path: Path, spec: RouteSpec, *, origin, route_xz, route_wid
         origin: (위도, 경도) 튜플
         route_xz: [(x, z), ...] 경로 좌표
         route_width: [폭, ...] 경로점별 도로 폭(m). route_xz 와 같은 길이
+        route_lanes: [차선 수, ...] 경로점별 전체 차선 수. 같은 길이
+        route_oneway: [bool, ...] 경로점별 일방통행 여부. 같은 길이
+        route_offset: [m, ...] 도로 중심에서 주행선까지 우측 거리. 같은 길이
         stops: [{"name", "x", "z", "progress_m", "osm_node"}, ...] 정류장
         signals: [{"x", "z", "source", "roads", "axis_deg", "half_width",
                    "camera"}, ...] 신호기
@@ -26,8 +29,11 @@ def write_route_json(path: Path, spec: RouteSpec, *, origin, route_xz, route_wid
     Returns:
         작성한 payload dict
     """
-    if len(route_width) != len(route_xz):
-        raise ValueError(f"route_width {len(route_width)}개, route {len(route_xz)}개")
+    for key, values in (("route_width", route_width), ("route_lanes", route_lanes),
+                        ("route_oneway", route_oneway),
+                        ("route_offset", route_offset)):
+        if len(values) != len(route_xz):
+            raise ValueError(f"{key} {len(values)}개, route {len(route_xz)}개")
     payload = {
         "id": spec.route_id,
         "name": spec.name,
@@ -39,6 +45,9 @@ def write_route_json(path: Path, spec: RouteSpec, *, origin, route_xz, route_wid
         "baked_at": baked_at,
         "route": [[round(x, 2), round(z, 2)] for x, z in route_xz],
         "route_width": [round(width, 2) for width in route_width],
+        "route_lanes": [int(count) for count in route_lanes],
+        "route_oneway": [1 if oneway else 0 for oneway in route_oneway],
+        "route_offset": [round(offset, 2) for offset in route_offset],
         "stops": sorted(stops, key=lambda s: s["progress_m"]),
         "signals": signals,
         "chunks": sorted(chunks, key=lambda c: c["name"]),

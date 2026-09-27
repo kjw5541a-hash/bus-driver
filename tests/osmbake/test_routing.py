@@ -2,8 +2,9 @@
 import unittest
 
 from tools.osmbake.geo import Projector
-from tools.osmbake.graph import build_graph
-from tools.osmbake.routing import (astar, offset_right, path_latlon,
+from tools.osmbake.graph import Edge, build_graph
+from tools.osmbake.routing import (astar, drive_offsets, offset_right,
+                                   path_lanes, path_latlon,
                                    path_widths, progress_on_path,
                                    project_path, snap_stops)
 
@@ -192,6 +193,33 @@ class TestPathWidths(unittest.TestCase):
         self.assertEqual(widths[0], 20.0)    # primary
         self.assertEqual(widths[1], 7.0)     # 만나는 점은 좁은 쪽
         self.assertEqual(widths[-1], 7.0)    # residential
+
+
+class TestPathLanes(unittest.TestCase):
+    def test_좁아지는_경계_점은_좁은_도로를_따른다(self):
+        wide = Edge(1, 2, (1, 2), 10.0, "primary", 1, False, 20.0, False, 6)
+        narrow = Edge(2, 3, (2, 3, 4), 10.0, "residential", 2, False, 7.0,
+                      True, 1)
+        lanes = path_lanes([wide, narrow])
+        self.assertEqual(lanes, [(6, False), (1, True), (1, True), (1, True)])
+        self.assertEqual(len(lanes), len(path_widths(None, [wide, narrow])))
+
+    def test_넓어지는_경계_점은_앞_도로를_따른다(self):
+        narrow = Edge(1, 2, (1, 2), 10.0, "residential", 1, False, 7.0,
+                      False, 2)
+        wide = Edge(2, 3, (2, 3), 10.0, "primary", 2, False, 20.0, False, 6)
+        self.assertEqual(path_lanes([narrow, wide]),
+                         [(2, False), (2, False), (6, False)])
+
+
+class TestDriveOffsets(unittest.TestCase):
+    def test_곧은_길은_그대로(self):
+        path = [(0.0, 0.0), (10.0, 0.0), (20.0, 0.0)]
+        self.assertEqual(drive_offsets(path, [5.625] * 3), [5.625] * 3)
+
+    def test_급커브_꼭짓점과_이웃은_0(self):
+        path = [(0.0, 0.0), (10.0, 0.0), (10.0, 10.0)]
+        self.assertEqual(drive_offsets(path, [1.75] * 3), [0.0] * 3)
 
 
 class TestOffsetRight(unittest.TestCase):

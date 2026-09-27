@@ -18,7 +18,8 @@ from .glb import write_glb
 from .graph import DRIVABLE_HIGHWAYS, build_graph
 from .overpass import fetch
 from .routes import ROUTES, RouteSpec
-from .routing import (astar, offset_right, path_latlon, path_widths,
+from .routing import (astar, drive_offsets, offset_right, path_lanes,
+                      path_latlon, path_widths,
                       progress_on_path, project_path, snap_stops)
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -126,10 +127,14 @@ def bake(route_id: str, *, cache_dir: Path = CACHE_DIR, out_dir: Path = OUT_DIR,
     route_latlon = path_latlon(graph, edges)
     route_xz = project_path(route_latlon, projector)
     widths = path_widths(graph, edges)
-    # 주행선은 도로 중심선이 아니라 우측 차선군의 한가운데다. 중심선을 그대로
-    # 달리면 중앙선 위를 타서 왕복 도로로 보이지 않는다. 우측 절반의 중앙은
-    # 중심선에서 폭의 1/4 이다 — 왕복 2차선(7 m)이면 1.75 m, 6차선(20 m)이면 5 m.
-    drive_xz = offset_right(route_xz, [width * 0.25 for width in widths])
+    lanes = path_lanes(edges)
+    # 주행선은 가장 바깥 차선 한가운데다. 중심선을 그대로 달리면 중앙선 위를
+    # 타고, 차선 경계에 두면 점선을 밟는다. 왕복 2차선(7 m)이면 1.75 m, 왕복
+    # 4차선(15 m)이면 5.625 m 다.
+    offsets = drive_offsets(route_xz, [
+        mesh_mod.outer_lane_offset(width, count)
+        for width, (count, _) in zip(widths, lanes)])
+    drive_xz = offset_right(route_xz, offsets)
     stops = snap_stops(route_xz, stop_nodes, projector, road_widths=widths)
     # 정류장 좌표는 중심선 기준으로 잡았다. 진행도는 버스가 실제로 달리는
     # 주행선에서 다시 재야 정차 목표점이 맞는다.
@@ -166,7 +171,10 @@ def bake(route_id: str, *, cache_dir: Path = CACHE_DIR, out_dir: Path = OUT_DIR,
     write_glb(out_dir / f"route_{route_id}.glb", chunks)
     payload = write_route_json(
         out_dir / f"route_{route_id}.json", spec,
-        origin=origin, route_xz=drive_xz, route_width=widths, stops=stops,
+        origin=origin, route_xz=drive_xz, route_width=widths,
+        route_lanes=[count for count, _ in lanes],
+        route_oneway=[oneway for _, oneway in lanes], route_offset=offsets,
+        stops=stops,
         signals=signals,
         chunks=[{"name": name, **_chunk_bounds(surfaces)}
                for name, surfaces in chunks.items()],

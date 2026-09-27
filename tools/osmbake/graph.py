@@ -10,7 +10,7 @@ from collections import Counter
 from dataclasses import dataclass
 
 from .geo import haversine
-from .mesh import road_width
+from .mesh import lane_count, road_width
 
 DRIVABLE_HIGHWAYS = frozenset({
     "motorway", "trunk", "primary", "secondary", "tertiary",
@@ -31,6 +31,9 @@ class Edge:
     bus_only: bool
     # 차도 폭. 주행선을 우측 차선으로 미는 데 쓴다.
     width: float = road_width({})
+    # 반대 방향 엣지가 없는 도로. 게임은 여기에 마주 오는 차를 두지 않는다.
+    oneway: bool = False
+    lanes: int = 2
 
 
 class RoadGraph:
@@ -69,6 +72,8 @@ def build_graph(elements: list[dict]) -> RoadGraph:
         forward = oneway != "-1"
         backward = oneway not in ("yes", "true", "1")
         width = road_width(tags)
+        is_oneway = not (forward and backward)
+        lanes = lane_count(tags)
         bus_only = (tags.get("highway") == "busway"
                     or (tags.get("access") == "no" and tags.get("bus") == "designated"))
 
@@ -89,9 +94,9 @@ def build_graph(elements: list[dict]) -> RoadGraph:
             if forward:
                 graph.add_edge(Edge(chunk_ids[0], chunk_ids[-1], chunk_ids,
                                     length, tags["highway"], w["id"], bus_only,
-                                    width))
+                                    width, is_oneway, lanes))
             if backward:
                 graph.add_edge(Edge(chunk_ids[-1], chunk_ids[0], chunk_ids[::-1],
                                     length, tags["highway"], w["id"], bus_only,
-                                    width))
+                                    width, is_oneway, lanes))
     return graph
