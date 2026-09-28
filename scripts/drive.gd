@@ -27,6 +27,7 @@ var day_clock: DayClock
 var atmosphere: Atmosphere
 var day_of_year := 1
 var weather: Weather
+var rain_screen: RainScreen
 
 func _ready() -> void:
 	var route_id := route_id_from_args()
@@ -136,6 +137,9 @@ func _ready() -> void:
 	add_child(clock_hud)
 	day_clock.rolled_over.connect(clock_hud.show_first_bus)
 
+	rain_screen = RainScreen.new()
+	add_child(rain_screen)
+
 	result = ResultPanel.new()
 	add_child(result)
 	result.next_requested.connect(func() -> void:
@@ -227,6 +231,7 @@ func _update_environment(delta: float) -> void:
 	city.set_wet(weather.rain)
 	if traffic != null:
 		traffic.cruise_scale = lerpf(1.0, 0.75, weather.rain)
+	rain_screen.set_rain(weather.rain)
 
 func _update_boarding_hud() -> void:
 	if boarding == null or boarding_hud == null:
