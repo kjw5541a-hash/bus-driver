@@ -22,6 +22,6 @@ void fragment() {
 	float radius = 0.12 + 0.25 * hash2(cell + 7.0).x;
 	float present = step(1.0 - wet, hash2(cell + 3.0).y);
 	float drop = present * smoothstep(radius, radius * 0.6, length(d));
-	vec3 color = textureLod(screen_tex, uv - d * drop * 0.04, wet * 2.5).rgb;
+	vec3 color = textureLod(screen_tex, uv - d * drop * 0.04, wet * 1.5).rgb;
 	COLOR = vec4(color, 1.0);
 }

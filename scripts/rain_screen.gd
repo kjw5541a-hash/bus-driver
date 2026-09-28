@@ -19,7 +19,7 @@ var _rect: ColorRect
 var _material: ShaderMaterial
 
 func _ready() -> void:
-	layer = 5   # HUD(10) 아래. 글자는 빗물에 안 가려진다
+	layer = -1   # 3D 바로 위, 모든 UI(터치 버튼 1, HUD 10) 아래. 글자는 안 가려진다
 	_material = ShaderMaterial.new()
 	_material.shader = SHADER
 	_rect = ColorRect.new()
