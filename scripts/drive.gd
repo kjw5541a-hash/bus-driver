@@ -28,6 +28,7 @@ var atmosphere: Atmosphere
 var day_of_year := 1
 var weather: Weather
 var rain_screen: RainScreen
+var street_lights: StreetLights
 
 func _ready() -> void:
 	var route_id := route_id_from_args()
@@ -56,11 +57,16 @@ func _ready() -> void:
 	nav.build(data.route)
 	add_child(nav)
 
+	street_lights = StreetLights.new()
+	street_lights.build(data.streetlights)
+	add_child(street_lights)
+
 	bus = Bus.new()
 	add_child(bus)
 	_place_at_start()
 	# 카메라는 버스 20 m 안이라 빗줄기 상자(40 m)는 버스만 따라가도 덮는다.
 	weather.follow = bus
+	street_lights.target = bus
 
 	input = BusInput.new()
 	add_child(input)
@@ -226,6 +232,7 @@ func _update_environment(delta: float) -> void:
 	"""시각·날씨를 하늘과 조명에 넘긴다. 부품끼리는 서로 모른다."""
 	var sun := SunPath.angles(day_of_year, day_clock.minutes)
 	atmosphere.apply(sun.x, sun.y, weather.rain)
+	street_lights.set_night(StreetLights.night_amount(sun.x))
 	clock_hud.update_time(day_clock.minutes, delta)
 	bus.set_wet(weather.rain)
 	city.set_wet(weather.rain)
