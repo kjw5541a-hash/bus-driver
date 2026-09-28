@@ -25,6 +25,14 @@ func _ready() -> void:
 	forward = -atmosphere.sun.global_basis.z
 	ok(forward.y < 0.0, "밤에 빛이 땅 밑에서 올라온다 %s" % forward)
 	ok(atmosphere.sun.shadow_enabled, "그림자가 꺼졌다")
+	# 해가 지평선을 넘는 순간 땅 조도가 튀면 안 된다.
+	var lux := func(elevation: float) -> float:
+		atmosphere.apply(elevation, 270.0, 0.0)
+		return atmosphere.sun.light_energy * maxf(0.0, -(-atmosphere.sun.global_basis.z).y)
+	var above: float = lux.call(0.1)
+	var below: float = lux.call(-0.1)
+	ok(absf(above - below) < 0.1, "일몰 순간 조도가 튄다 %.3f → %.3f" % [above, below])
+	equal_approx(atmosphere.sun.light_energy, Atmosphere.MOON_ENERGY, 0.001, "달빛 세기")
 	atmosphere.apply(30.0, 180.0, 1.0)
 	ok(atmosphere.environment.fog_enabled, "비 오는데 안개가 없다")
 	atmosphere.apply(30.0, 180.0, 0.0)

@@ -4,7 +4,7 @@ class_name StreetLights
 # 1,000 개). 실제 빛(OmniLight3D)은 POOL 개만 두고 target 에서 가까운 자리로
 # 옮겨 다닌다 — 수천 개를 다 켜면 모바일이 버티지 못한다.
 
-const POOL := 12
+const POOL := 8                 # 모바일 렌더러의 메쉬당 옴니 라이트 한도
 const RANGE_M := 18.0
 const POLE_HEIGHT_M := 8.0
 const ARM_M := 0.8              # 기둥에서 도로 쪽으로 전등 머리가 나온 거리
@@ -30,6 +30,9 @@ func build(entries: Array) -> void:
 	pole_mesh.top_radius = 0.08
 	pole_mesh.bottom_radius = 0.12
 	pole_mesh.height = POLE_HEIGHT_M
+	# 기본 64 각이면 기둥 하나가 삼각형 768 개라 노선 전체가 도시의 8배가 된다.
+	pole_mesh.radial_segments = 6
+	pole_mesh.rings = 0
 	var pole_material := StandardMaterial3D.new()
 	pole_material.albedo_color = Color(0.35, 0.36, 0.38)
 	pole_mesh.material = pole_material
@@ -64,6 +67,8 @@ func build(entries: Array) -> void:
 		var instance := MultiMeshInstance3D.new()
 		instance.multimesh = multimesh
 		add_child(instance)
+	# 머리는 작고 기둥 그림자에 묻혀 그림자 패스에서 뺀다.
+	get_child(get_child_count() - 1).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
 	for i in POOL:
 		var light := OmniLight3D.new()

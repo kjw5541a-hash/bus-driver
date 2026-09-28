@@ -6,6 +6,9 @@ class_name Atmosphere
 
 const MOON_ELEVATION_DEG := 50.0
 const MOON_AZIMUTH_DEG := 200.0
+const MOON_ENERGY := 0.08
+const MOON_COLOR := Color(0.6, 0.7, 1.0)
+const SUN_FADE_DEG := 2.0       # 이 고도 아래부터 햇빛을 줄여 지평선에서 0 으로 만든다
 const RAIN_GREY := Color(0.36, 0.38, 0.41)
 const RAIN_SUN_CUT := 0.6       # 비 1 에서 햇빛을 이만큼 줄인다
 const RAIN_FOG_DENSITY := 0.006
@@ -69,13 +72,20 @@ static func palette(elevation_deg: float, rain: float) -> Dictionary:
 func apply(elevation_deg: float, azimuth_deg: float, rain: float) -> void:
 	var colors := palette(elevation_deg, rain)
 	var toward := SunPath.direction(elevation_deg, azimuth_deg)
+	# 해가 지평선에 닿기 전에 햇빛을 0 으로 줄이고, 지면 약한 달빛으로 바꾼다.
+	# 그러지 않으면 넘어가는 순간 빛 방향이 수평에서 머리 위로 튀어 땅이 확
+	# 밝아지고 그림자가 돌아간다.
+	var energy: float = colors["sun_energy"] * clampf(elevation_deg / SUN_FADE_DEG, 0.0, 1.0)
+	var color: Color = colors["sun_color"]
 	if elevation_deg < 0.0:
 		toward = SunPath.direction(MOON_ELEVATION_DEG, MOON_AZIMUTH_DEG)
+		energy = MOON_ENERGY
+		color = MOON_COLOR
 	# 빛은 해에서 땅으로 가므로 조명의 -Z 가 해 반대쪽을 보게 한다. 서울의 최대
 	# 고도는 76° 라 UP 과 평행해질 일이 없다.
 	sun.global_transform = Transform3D(Basis.looking_at(-toward, Vector3.UP), Vector3.ZERO)
-	sun.light_color = colors["sun_color"]
-	sun.light_energy = colors["sun_energy"]
+	sun.light_color = color
+	sun.light_energy = energy
 	_sky.sky_top_color = colors["sky_top"]
 	_sky.sky_horizon_color = colors["horizon"]
 	_sky.ground_horizon_color = colors["horizon"]
