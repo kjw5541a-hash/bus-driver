@@ -8,7 +8,8 @@ ATTRIBUTION = "© OpenStreetMap contributors (ODbL)"
 
 
 def write_route_json(path: Path, spec: RouteSpec, *, origin, route_xz, route_width,
-                     route_lanes, route_oneway, route_offset, stops, signals, chunks, baked_at: str) -> dict:
+                     route_lanes, route_oneway, route_offset, stops, signals, chunks, baked_at: str,
+                     streetlights=()) -> dict:
     """route JSON 파일을 쓴다.
 
     Args:
@@ -23,6 +24,7 @@ def write_route_json(path: Path, spec: RouteSpec, *, origin, route_xz, route_wid
         stops: [{"name", "x", "z", "progress_m", "osm_node"}, ...] 정류장
         signals: [{"x", "z", "source", "roads", "axis_deg", "half_width",
                    "camera"}, ...] 신호기
+        streetlights: [[x, z, yaw], ...] 가로등 자리
         chunks: [{"name": str, "min": [x, z], "max": [x, z]}, ...] 청크 경계상자
         baked_at: ISO 8601 타임스탬프
 
@@ -50,6 +52,7 @@ def write_route_json(path: Path, spec: RouteSpec, *, origin, route_xz, route_wid
         "route_offset": [round(offset, 2) for offset in route_offset],
         "stops": sorted(stops, key=lambda s: s["progress_m"]),
         "signals": signals,
+        "streetlights": [list(s) for s in streetlights],
         "chunks": sorted(chunks, key=lambda c: c["name"]),
     }
     path = Path(path)

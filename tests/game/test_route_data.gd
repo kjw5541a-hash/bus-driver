@@ -27,6 +27,9 @@ func _ready() -> void:
 	ok(signal_entry.has("half_width") and float(signal_entry["half_width"]) > 0.0,
 		"신호 반폭이 없다: %s" % str(signal_entry))
 	ok(signal_entry.has("camera"), "신호 카메라 필드가 없다: %s" % str(signal_entry))
+	ok(data.streetlights.size() > 20, "가로등이 %d 개뿐이다" % data.streetlights.size())
+	if not data.streetlights.is_empty():
+		ok(data.streetlights[0].size() == 3, "가로등 계약이 [x, z, yaw] 가 아니다")
 
 	# 정차 목표점은 노선 위의 점이다. OSM 정류장 노드는 인도에 있어서
 	# 그대로 쓰면 차선에 제대로 세워도 걸어오는 시간이 붙는다.

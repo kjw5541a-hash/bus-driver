@@ -34,6 +34,8 @@ const MODEL_OFFSET_Z := 0.15
 # 모델은 이 렌더 레이어에만 그린다. 운전석 시점 카메라가 이 레이어를 빼서
 # 차체 안쪽 벽 대신 바깥을 본다.
 const MODEL_LAYER := 2
+const DRY_GRIP := 3.5
+const WET_GRIP := 2.2     # 비 1 에서 바퀴 마찰. 제동거리가 늘고 급커브에서 미끄러진다
 
 var _respawn_transform := Transform3D()
 var _respawn_pending := false
@@ -84,7 +86,7 @@ func _ready() -> void:
 		wheel.suspension_max_force = 80000.0
 		wheel.damping_compression = 3.7
 		wheel.damping_relaxation = 6.1
-		wheel.wheel_friction_slip = 3.5
+		wheel.wheel_friction_slip = DRY_GRIP
 		add_child(wheel)
 
 func apply_axes(steer_axis: float, throttle_axis: float, brake_axis: float,
@@ -131,3 +133,8 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 	steering = 0.0
 	engine_force = 0.0
 	brake = 0.0
+
+func set_wet(amount: float) -> void:
+	var grip := lerpf(DRY_GRIP, WET_GRIP, clampf(amount, 0.0, 1.0))
+	for wheel in find_children("*", "VehicleWheel3D", false, false):
+		wheel.wheel_friction_slip = grip

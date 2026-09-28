@@ -1,4 +1,5 @@
 """A* 경로 탐색: 최단 경로, 노선 멤버 우선, 우회."""
+import math
 import unittest
 
 from shapely.geometry import box
@@ -7,8 +8,9 @@ from tools.osmbake.geo import Projector
 from tools.osmbake.graph import Edge, build_graph
 from tools.osmbake.routing import (astar, drive_offsets, offset_right,
                                    path_lanes, path_latlon,
-                                   path_widths, progress_on_path,
-                                   project_path, snap_stops)
+                                   path_widths, place_streetlights,
+                                   progress_on_path, project_path,
+                                   snap_stops)
 
 
 def way(way_id, node_ids, coords, **tags):
@@ -294,3 +296,37 @@ class TestProgressOnPath(unittest.TestCase):
         path = [(0.0, 0.0), (100.0, 0.0)]
         self.assertAlmostEqual(progress_on_path(path, (30.0, 12.0)), 30.0,
                                places=6)
+
+
+class TestStreetlights(unittest.TestCase):
+    def setUp(self):
+        self.projector = Projector(37.500, 127.000)
+        # 정동쪽 약 176 m 직선. 우측은 +z, 좌측은 -z.
+        self.path = project_path(
+            [(37.500, 127.000), (37.500, 127.001), (37.500, 127.002)],
+            self.projector)
+        self.both = box(-10.0, 12.0, 300.0, 14.0).union(box(-10.0, -14.0, 300.0, -12.0))
+
+    def test_양쪽_인도에_간격대로_선다(self):
+        lights = place_streetlights(self.path, self.both)
+        right = [l for l in lights if l[1] > 0]
+        left = [l for l in lights if l[1] < 0]
+        self.assertEqual(len(right), 6)   # 0, 30, ... 150 m
+        self.assertEqual(len(left), 6)
+        for x, z, yaw in right:
+            self.assertAlmostEqual(z, 13.0, delta=0.3)
+            self.assertAlmostEqual(yaw, 0.0, delta=0.05)       # -Z(도로)를 본다
+        for x, z, yaw in left:
+            self.assertAlmostEqual(z, -13.0, delta=0.3)
+            self.assertAlmostEqual(abs(yaw), math.pi, delta=0.05)
+
+    def test_인도_없는_쪽은_비운다(self):
+        lights = place_streetlights(self.path, box(-10.0, 12.0, 300.0, 14.0))
+        self.assertEqual(len(lights), 6)
+        self.assertTrue(all(l[1] > 0 for l in lights))
+
+    def test_가까운_자리는_하나만(self):
+        lights = place_streetlights(self.path, self.both, spacing_m=4.0)
+        for i, a in enumerate(lights):
+            for b in lights[i + 1:]:
+                self.assertGreaterEqual(math.hypot(a[0] - b[0], a[1] - b[1]), 10.0 - 1e-6)

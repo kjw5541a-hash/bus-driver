@@ -26,8 +26,8 @@ static func min_gap(speed: float) -> float:
 	return STANDSTILL_GAP_M + speed * HEADWAY_S
 
 static func next_speed(speed: float, gap_m: float, stop_m: float,
-		phase: TrafficSignal.Phase, delta: float) -> float:
-	var target := CRUISE_MPS
+		phase: TrafficSignal.Phase, delta: float, cruise: float = CRUISE_MPS) -> float:
+	var target := cruise
 	# 앞 장애물: 안전 거리까지 남은 거리 안에 PLAN_BRAKE 로 설 수 있는 속도.
 	target = minf(target, sqrt(2.0 * PLAN_BRAKE * maxf(0.0, gap_m - min_gap(speed))))
 	# 정지선: 적색은 정지선이 간격 0 장애물이다. 황색은 설 수 있을 때만 선다.
