@@ -241,11 +241,17 @@ def _to_sidewalk(path_xz: list[tuple[float, float]], sidewalk,
     side = (point[0] - foot_x) * right_x + (point[1] - foot_z) * right_z
     if side <= 0.0:
         return None
+    return _sidewalk_mid(sidewalk, (foot_x, foot_z), (right_x, right_z))
+
+
+def _sidewalk_mid(sidewalk, foot: tuple[float, float],
+                  normal: tuple[float, float]) -> tuple[float, float] | None:
+    """foot 에서 normal 방향으로 처음 만나는 인도 구간의 한가운데. 없으면 None."""
     steps = int(SIDEWALK_SEARCH_M / SIDEWALK_STEP_M) + 1
     offsets = [i * SIDEWALK_STEP_M for i in range(steps)]
     inside = shapely.contains_xy(sidewalk,
-                                 [foot_x + right_x * o for o in offsets],
-                                 [foot_z + right_z * o for o in offsets])
+                                 [foot[0] + normal[0] * o for o in offsets],
+                                 [foot[1] + normal[1] * o for o in offsets])
     run = []
     for offset, hit in zip(offsets, inside):
         if hit:
@@ -255,7 +261,44 @@ def _to_sidewalk(path_xz: list[tuple[float, float]], sidewalk,
     if not run:
         return None
     out = (run[0] + run[-1]) / 2.0
-    return (foot_x + right_x * out, foot_z + right_z * out)
+    return (foot[0] + normal[0] * out, foot[1] + normal[1] * out)
+
+
+def place_streetlights(path_xz: list[tuple[float, float]], sidewalk,
+                       spacing_m: float = 30.0,
+                       min_gap_m: float = 10.0) -> list[list[float]]:
+    """노선 양쪽 인도에 spacing_m 간격으로 가로등 자리 [x, z, yaw] 를 뽑는다.
+
+    yaw 는 Basis(UP, yaw) 의 -Z 가 도로(노선) 쪽을 보게 하는 각이다. 급커브와
+    교차로에서는 이웃 표본이 같은 인도 자리로 몰리므로 min_gap_m 안의 자리는
+    먼저 놓인 하나만 남긴다.
+    """
+    lights: list[list[float]] = []
+    walked = 0.0
+    next_at = 0.0
+    for index in range(len(path_xz) - 1):
+        ax, az = path_xz[index]
+        bx, bz = path_xz[index + 1]
+        length = math.hypot(bx - ax, bz - az)
+        if length < 1e-9:
+            continue
+        tx, tz = (bx - ax) / length, (bz - az) / length
+        while next_at <= walked + length:
+            t = next_at - walked
+            foot = (ax + tx * t, az + tz * t)
+            for normal in ((-tz, tx), (tz, -tx)):
+                spot = _sidewalk_mid(sidewalk, foot, normal)
+                if spot is None:
+                    continue
+                # ponytail: 전체 대조라 O(n²). 1,300 개에서 1초 안이다. 느려지면 STRtree.
+                if any(math.hypot(spot[0] - l[0], spot[1] - l[1]) < min_gap_m
+                       for l in lights):
+                    continue
+                yaw = math.atan2(-(foot[0] - spot[0]), -(foot[1] - spot[1]))
+                lights.append([round(spot[0], 2), round(spot[1], 2), round(yaw, 3)])
+            next_at += spacing_m
+        walked += length
+    return lights
 
 
 def snap_stops(path_xz: list[tuple[float, float]], stop_nodes: list[dict],

@@ -30,6 +30,7 @@ var route_offset: PackedFloat32Array = []  # 도로 중심에서 주행선까지
 var stops: Array = []
 var chunks: Array = []
 var signals: Array = []
+var streetlights: Array = []
 # 정차 목표점. stops 와 같은 순서다. 자세한 이유는 point_at_progress 를 보라.
 var stop_targets: PackedVector3Array = []
 # 정차 목표점에서 노선 진행 방향(단위 벡터). 정류장을 지나쳤는지 재는 데 쓴다.
@@ -70,6 +71,7 @@ static func load_route(route_id: String) -> RouteData:
 	# 구 버전 산출물에는 signals 가 없거나 axis_deg 가 빠져 있다. 비어 있으면
 	# 신호 관련 노드가 조용히 아무것도 안 하도록 그대로 넘긴다.
 	data.signals = parsed.get("signals", [])
+	data.streetlights = parsed.get("streetlights", [])
 	data._build_stop_targets()
 	return data
 
@@ -173,6 +175,8 @@ func slice(index: int) -> RouteData:
 		var stop: Dictionary = stops[stop_index].duplicate()
 		stop["progress_m"] = float(stop.get("progress_m", 0.0)) - start_m
 		part.stops.append(stop)
+	# 가로등은 구간을 가리지 않고 전부 넘긴다. MultiMesh 한 번이라 싸다.
+	part.streetlights = streetlights
 	for entry in signals:
 		var point := Vector3(float(entry["x"]), 0.0, float(entry["z"]))
 		if part.distance_to_route(point) <= SECTION_SIGNAL_M:

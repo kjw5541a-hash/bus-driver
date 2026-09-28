@@ -22,7 +22,7 @@ from .graph import DRIVABLE_HIGHWAYS, build_graph
 from .overpass import fetch
 from .routes import ROUTES, RouteSpec
 from .routing import (astar, drive_offsets, offset_right, path_lanes,
-                      path_latlon, path_widths,
+                      path_latlon, path_widths, place_streetlights,
                       progress_on_path, project_path, snap_stops)
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -150,6 +150,7 @@ def bake(route_id: str, *, cache_dir: Path = CACHE_DIR, out_dir: Path = OUT_DIR,
     shapely.prepare(sidewalk_top)
 
     stops = snap_stops(route_xz, stop_nodes, projector, sidewalk=sidewalk_top)
+    streetlights = place_streetlights(route_xz, sidewalk_top)
     # 정류장 좌표는 중심선 기준으로 잡았다. 진행도는 버스가 실제로 달리는
     # 주행선에서 다시 재야 정차 목표점이 맞는다.
     for stop in stops:
@@ -188,13 +189,14 @@ def bake(route_id: str, *, cache_dir: Path = CACHE_DIR, out_dir: Path = OUT_DIR,
         route_oneway=[oneway for _, oneway in lanes], route_offset=offsets,
         stops=stops,
         signals=signals,
+        streetlights=streetlights,
         chunks=[{"name": name, **_chunk_bounds(surfaces)}
                for name, surfaces in chunks.items()],
         baked_at=baked_at)
     triangles = sum(b.triangle_count() for c in chunks.values()
                     for b in c.values())
     print(f"{route_id}: 경로 {len(route_xz)}점, 정류장 {len(stops)}개, "
-          f"신호 후보 {len(signals)}개, 청크 {len(chunks)}개, 삼각형 {triangles}개")
+          f"신호 후보 {len(signals)}개, 가로등 {len(streetlights)}개, 청크 {len(chunks)}개, 삼각형 {triangles}개")
     return payload
 
 
