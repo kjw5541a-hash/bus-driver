@@ -64,6 +64,7 @@ class Car:
 	var parked := false            # 일방통행 구간이라 치워 둔 마주 오는 차
 	var change_s := 0.0            # 다음 차선 변경을 따질 수 있을 때까지
 
+var cruise_scale := 1.0   # 비가 오면 순항 속도를 줄인다
 var cars: Array = []
 var forward_road: LanePath
 var backward_road: LanePath
@@ -241,7 +242,8 @@ func _drive(car: Car, bus_on: Vector2, t: float, delta: float) -> void:
 	if not line.is_empty():
 		stop_m = float(line["at_m"]) - front
 		phase = TrafficSignal.phase_at(float(line["offset"]), int(line["axis"]), t)
-	car.speed = CarFollow.next_speed(car.speed, gap, stop_m, phase, delta)
+	car.speed = CarFollow.next_speed(car.speed, gap, stop_m, phase, delta,
+			CarFollow.CRUISE_MPS * cruise_scale)
 	car.distance = minf(car.distance + car.speed * delta, car.road.length_m())
 
 func _ahead(road: LanePath, distance: float, side: float, me: Car, bus_on: Vector2) -> Vector2:

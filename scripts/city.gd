@@ -6,7 +6,11 @@ class_name City
 # 아직 필요 없다. seoul-100(삼각형 133k, 청크 643개)을 M4 Pro 에서 재니
 # 평균 119.7 fps / 최저 119.0 으로 vsync 상한에 붙었다. 기준은 평균 60 /
 # 최저 55 다. Godot 이 MeshInstance3D 단위로 절두체 컬링을 공짜로 해준다.
+const DRY_ROUGHNESS := 0.95   # bake 의 road 재질 값(glb.py MATERIALS)
+const WET_ROUGHNESS := 0.25
+
 var chunk_nodes: Array[Node3D] = []
+var _road_materials: Array[BaseMaterial3D] = []
 
 func load_city(route_id: String) -> bool:
 	var scene: PackedScene = load("res://assets/routes/route_%s.glb" % route_id)
@@ -19,8 +23,22 @@ func load_city(route_id: String) -> bool:
 		# 구운 메쉬에는 충돌체가 없다. 삼각형 메쉬 충돌을 붙여야 바퀴가 닿는다.
 		node.create_trimesh_collision()
 		chunk_nodes.append(node)
+		for surface in node.mesh.get_surface_count():
+			var material := node.mesh.surface_get_material(surface) as BaseMaterial3D
+			if material != null and material.resource_name == "road" \
+					and not _road_materials.has(material):
+				_road_materials.append(material)
 	_add_ground()
 	return true
+
+func road_materials() -> Array[BaseMaterial3D]:
+	return _road_materials
+
+func set_wet(amount: float) -> void:
+	"""젖은 도로는 거칠기를 낮춰 하늘과 불빛을 비춘다."""
+	var roughness := lerpf(DRY_ROUGHNESS, WET_ROUGHNESS, clampf(amount, 0.0, 1.0))
+	for material in _road_materials:
+		material.roughness = roughness
 
 func _add_ground() -> void:
 	# 1번 산출물의 충돌면은 도로 리본과 건물뿐이라 도로 밖은 허공이다.
