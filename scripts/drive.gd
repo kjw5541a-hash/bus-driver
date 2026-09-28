@@ -23,6 +23,9 @@ var boarding_hud: BoardingHud
 var clock: RunClock
 var clock_hud: ClockHud
 var result: ResultPanel
+var day_clock: DayClock
+var atmosphere: Atmosphere
+var day_of_year := 1
 
 func _ready() -> void:
 	var route_id := route_id_from_args()
@@ -37,10 +40,12 @@ func _ready() -> void:
 	if not city.load_city(route_id):
 		return
 
-	var light := DirectionalLight3D.new()
-	light.rotation_degrees = Vector3(-50.0, -30.0, 0.0)
-	light.shadow_enabled = true
-	add_child(light)
+	atmosphere = Atmosphere.new()
+	add_child(atmosphere)
+	day_clock = DayClock.new()
+	day_clock.start(DayClock.minutes_from_args(OS.get_cmdline_user_args()))
+	add_child(day_clock)
+	day_of_year = SunPath.today()
 
 	var nav := NavLine.new()
 	nav.build(data.route)
@@ -123,6 +128,7 @@ func _ready() -> void:
 
 	clock_hud = ClockHud.new()
 	add_child(clock_hud)
+	day_clock.rolled_over.connect(clock_hud.show_first_bus)
 
 	result = ResultPanel.new()
 	add_child(result)
@@ -200,6 +206,17 @@ func _physics_process(delta: float) -> void:
 		respawn_asked = true
 	if respawn_asked:
 		respawn()
+
+func _process(delta: float) -> void:
+	if day_clock == null:
+		return
+	_update_environment(delta)
+
+func _update_environment(delta: float) -> void:
+	"""시각·날씨를 하늘과 조명에 넘긴다. 부품끼리는 서로 모른다."""
+	var sun := SunPath.angles(day_of_year, day_clock.minutes)
+	atmosphere.apply(sun.x, sun.y, 0.0)
+	clock_hud.update_time(day_clock.minutes, delta)
 
 func _update_boarding_hud() -> void:
 	if boarding == null or boarding_hud == null:
