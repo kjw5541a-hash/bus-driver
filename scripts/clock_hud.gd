@@ -5,7 +5,14 @@ class_name ClockHud
 var label_text: String:
 	get: return _label.text if _label != null else ""
 
+const FIRST_BUS_NOTICE_S := 3.0
+
+var time_text: String:
+	get: return _time.text if _time != null else ""
+
 var _label: Label
+var _time: Label
+var _notice_left := 0.0
 
 func _ready() -> void:
 	layer = 10
@@ -16,6 +23,14 @@ func _ready() -> void:
 	_label.size = Vector2(220.0, 32.0)
 	_label.add_theme_font_size_override("font_size", 24)
 	add_child(_label)
+	# 게임 시각. 남은 시간 바로 아래.
+	_time = Label.new()
+	_time.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	_time.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_time.position = Vector2(-236.0, 50.0)
+	_time.size = Vector2(220.0, 28.0)
+	_time.add_theme_font_size_override("font_size", 20)
+	add_child(_time)
 
 func update_clock(clock: RunClock) -> void:
 	if _label == null or clock == null:
@@ -24,6 +39,15 @@ func update_clock(clock: RunClock) -> void:
 	_label.text = text_for(left)
 	_label.add_theme_color_override("font_color",
 		Color.WHITE if left >= 0.0 else Color(1.0, 0.35, 0.3))
+
+func update_time(minutes: float, delta: float = 0.0) -> void:
+	if _time == null:
+		return
+	_notice_left = maxf(0.0, _notice_left - delta)
+	_time.text = "첫차 05:00" if _notice_left > 0.0 else DayClock.hhmm(minutes)
+
+func show_first_bus() -> void:
+	_notice_left = FIRST_BUS_NOTICE_S
 
 static func text_for(left_s: float) -> String:
 	if left_s >= 0.0:
