@@ -91,7 +91,7 @@ func _build_select() -> void:
 	select_box.add_child(scroll)
 
 	columns = BoxContainer.new()
-	columns.size_flags_horizontal = Control.SIZE_EXPAND | Control.SIZE_SHRINK_CENTER
+	columns.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	columns.add_theme_constant_override("separation", 24)
 	scroll.add_child(columns)
 
@@ -119,6 +119,7 @@ func _build_select() -> void:
 		route_buttons[route_id] = button
 
 	_sections_box = VBoxContainer.new()
+	_sections_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_sections_box.add_theme_constant_override("separation", 8)
 	columns.add_child(_sections_box)
 
@@ -150,6 +151,8 @@ func _on_route_chosen(route_id: String) -> void:
 		var button := Button.new()
 		button.text = section_text(route_id, data.slice(index), index)
 		button.custom_minimum_size = Vector2(360, 48)
+		# 정류장 이름이 길면 폰 세로 폭을 넘는다. 줄을 바꿔 받는다.
+		button.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		button.pressed.connect(_on_section_chosen.bind(index))
 		_sections_box.add_child(button)
 		section_buttons.append(button)

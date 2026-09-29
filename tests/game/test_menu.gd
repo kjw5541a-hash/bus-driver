@@ -38,8 +38,15 @@ func _ready() -> void:
 		ok(menu.section_buttons[1].text.contains("최고 —"),
 			"기록 없는 구간 표시: %s" % menu.section_buttons[1].text)
 
-	menu.size = Vector2(720, 1280)
+	menu.size = Vector2(540, 960)
 	ok(menu.columns.vertical, "세로 화면인데 두 열이 좌우로 놓였다")
+	# 정류장 이름이 긴 구간 버튼이 폰 세로 폭을 넘으면 글자가 잘린다.
+	await get_tree().process_frame
+	await get_tree().process_frame
+	for button in menu.section_buttons:
+		ok(button.get_global_rect().end.x <= menu.size.x + 0.5,
+			"세로 화면에서 구간 버튼이 화면 밖으로 넘쳤다 (%.0f > %.0f)"
+			% [button.get_global_rect().end.x, menu.size.x])
 	menu.size = Vector2(1280, 720)
 	ok(not menu.columns.vertical, "가로 화면인데 두 열이 위아래로 놓였다")
 	remove_child(menu)
