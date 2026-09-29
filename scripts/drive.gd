@@ -175,7 +175,9 @@ func _on_finished() -> void:
 		clock.boarded_total, watch.violations, watch.camera_violations,
 		boarding.missed, boarding.left_behind, clock.respawns, crash.crashes)
 	var title := "%s · 구간 %d/%d" % [data.display_name, data.section + 1, data.section_count]
-	result.show_result(card, title, data.section < data.section_count - 1)
+	# 적발로 끝나면 이 함수가 불리지 않는다. 완주만 기록한다.
+	var new_best := Records.submit(data.id, data.section, card.total, card.stars)
+	result.show_result(card, title, data.section < data.section_count - 1, new_best)
 
 func _place_at_start() -> void:
 	# 노선 첫 점에서 진행 방향을 보고 선다.

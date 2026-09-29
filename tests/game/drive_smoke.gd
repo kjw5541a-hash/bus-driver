@@ -202,4 +202,21 @@ func _report() -> void:
 			"테스트", true)
 		ok(drive.result.visible and drive.result.line_count == 4,
 			"결과 화면 줄이 %d 개다" % drive.result.line_count)
+	# 완주하면 구간 최고 기록이 남고 결과 화면에 "최고 기록!" 이 뜬다.
+	# 실제 기록 파일을 건드리지 않게 임시 경로를 쓴다.
+	Records.path = "user://test_drive_records.cfg"
+	DirAccess.remove_absolute(Records.path)
+	drive._on_finished()
+	ok(not Records.best(drive.data.id, drive.data.section).is_empty(),
+		"완주했는데 기록이 안 남았다")
+	ok(_result_has("최고 기록!"), "새 기록인데 결과 화면에 표시가 없다")
+	DirAccess.remove_absolute(Records.path)
 	finish()
+
+func _result_has(text: String) -> bool:
+	# show_result 는 이전 줄을 queue_free 로 지워서 같은 프레임에는 옛 줄도
+	# 남아 있다. 찾는 문구가 있는지만 본다.
+	for label in drive.result.find_children("*", "Label", true, false):
+		if (label as Label).text == text and not label.is_queued_for_deletion():
+			return true
+	return false

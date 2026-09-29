@@ -45,7 +45,7 @@ func _button(parent: Control, text: String, emitted: Signal) -> Button:
 	parent.add_child(button)
 	return button
 
-func show_result(card: ScoreCard, title: String, has_next: bool) -> void:
+func show_result(card: ScoreCard, title: String, has_next: bool, new_best := false) -> void:
 	for child in _box.get_children():
 		child.queue_free()
 	_label(title, 28)
@@ -54,6 +54,8 @@ func show_result(card: ScoreCard, title: String, has_next: bool) -> void:
 		_label("%s  x%d   %+d" % [line["label"], line["count"], line["points"]], 20)
 		line_count += 1
 	_label("총점 %d" % card.total, 30)
+	if new_best:
+		_label("최고 기록!", 24)
 	_label("★".repeat(card.stars) + "☆".repeat(3 - card.stars), 40)
 	_has_next = has_next
 	_next.visible = has_next
