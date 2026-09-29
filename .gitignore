@@ -2,3 +2,11 @@ __pycache__/
 *.pyc
 .godot/
 tools/osmbake/work/
+# 빌드 산출물과 CI 가 푸는 안드로이드 빌드 템플릿
+build/
+android/
+# 서명 키는 저장소에 절대 넣지 않는다
+*.jks
+*.keystore
+# superpowers 작업 기록
+.superpowers/
