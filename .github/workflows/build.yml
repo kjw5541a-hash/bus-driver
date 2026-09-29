@@ -1,0 +1,243 @@
+name: Build
+
+# 브랜치 push: 테스트 + 안드로이드 빌드(로컬에 SDK 가 없어 이것이 유일한 검증).
+# v* 태그 push: 세 플랫폼 빌드 후 GitHub Release 에 올린다.
+on:
+  push:
+    branches: ['**']
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  GODOT_VERSION: 4.7.2
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install Godot
+        run: |
+          set -euo pipefail
+          base="https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable"
+          curl -fsSL -o godot.zip "$base/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          unzip -q godot.zip
+          install -m 755 "Godot_v${GODOT_VERSION}-stable_linux.x86_64" /usr/local/bin/godot
+      - name: Python tests
+        run: |
+          pip install -r requirements.txt
+          python -m unittest discover -s tests -t .
+      - name: Game tests
+        run: tests/game/run_game_tests.sh
+        env:
+          GODOT: /usr/local/bin/godot
+
+  android:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Godot 의 그레이들 빌드가 JDK 17 을 요구한다.
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Cache export templates
+        id: templates
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/godot/export_templates
+          key: godot-android-templates-${{ env.GODOT_VERSION }}
+      - name: Install Godot
+        run: |
+          set -euo pipefail
+          base="https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable"
+          curl -fsSL -o godot.zip "$base/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          unzip -q godot.zip
+          install -m 755 "Godot_v${GODOT_VERSION}-stable_linux.x86_64" /usr/local/bin/godot
+      - name: Install export templates
+        if: steps.templates.outputs.cache-hit != 'true'
+        run: |
+          set -euo pipefail
+          base="https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable"
+          curl -fsSL -o templates.tpz "$base/Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
+          dest="$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable"
+          mkdir -p "$dest"
+          unzip -q -o -j templates.tpz 'templates/android_*' 'templates/version.txt' -d "$dest"
+      # 에디터의 "Install Android Build Template" 메뉴가 하는 일을 흉내 낸다
+      # (3DBlockBreaker 에서 검증). .build_version 이 없으면 export 가 막힌다.
+      - name: Install Android build template
+        run: |
+          set -euo pipefail
+          dest="$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable"
+          mkdir -p android/build
+          printf '%s.stable\n' "$GODOT_VERSION" > android/.build_version
+          echo "" > android/build/.gdignore
+          unzip -q -o "$dest/android_source.zip" -d android/build
+      - name: Set version
+        run: python3 tools/set_version.py "$GITHUB_REF_NAME" "$GITHUB_SHA"
+      # 키스토어는 비밀값으로만 존재한다. 파일로 풀고 preset 에 써 넣는 일은
+      # 이 러너 안에서만 벌어진다 — 커밋되지 않는다.
+      - name: Write keystore
+        run: |
+          set -euo pipefail
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > /tmp/release.jks
+          python3 - <<'PY'
+          import os
+          p = 'export_presets.cfg'
+          s = open(p, encoding='utf-8').read()
+          s = s.replace('keystore/release=""', 'keystore/release="/tmp/release.jks"')
+          s = s.replace('keystore/release_user=""',
+              'keystore/release_user="%s"' % os.environ['ANDROID_KEY_ALIAS'])
+          s = s.replace('keystore/release_password=""',
+              'keystore/release_password="%s"' % os.environ['ANDROID_KEYSTORE_PASSWORD'])
+          open(p, 'w', encoding='utf-8').write(s)
+          PY
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+      - name: Export APK
+        run: |
+          set -euo pipefail
+          mkdir -p build
+          godot --headless --import >/dev/null 2>&1 || true
+          godot --headless --export-release "Android" build/bus-driver.apk
+          test -s build/bus-driver.apk
+      # 노선 JSON 이 들어가고 원본 OSM 캐시가 빠졌는지 본다.
+      - name: Check APK contents
+        run: |
+          set -euo pipefail
+          unzip -l build/bus-driver.apk > build/apk.txt
+          grep -q 'route_seoul-100.json' build/apk.txt
+          if grep -q 'osm_cache' build/apk.txt; then echo 'osm_cache 가 APK 에 들어갔다'; exit 1; fi
+          ls -la build/bus-driver.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: apk
+          path: build/bus-driver.apk
+          retention-days: 7
+
+  windows:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cache export templates
+        id: templates
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/godot/export_templates
+          key: godot-windows-templates-${{ env.GODOT_VERSION }}
+      - name: Install Godot
+        run: |
+          set -euo pipefail
+          base="https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable"
+          curl -fsSL -o godot.zip "$base/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          unzip -q godot.zip
+          install -m 755 "Godot_v${GODOT_VERSION}-stable_linux.x86_64" /usr/local/bin/godot
+      - name: Install export templates
+        if: steps.templates.outputs.cache-hit != 'true'
+        run: |
+          set -euo pipefail
+          base="https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable"
+          curl -fsSL -o templates.tpz "$base/Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
+          dest="$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable"
+          mkdir -p "$dest"
+          unzip -q -o -j templates.tpz 'templates/windows_*' 'templates/version.txt' -d "$dest"
+      - name: Set version
+        run: python3 tools/set_version.py "$GITHUB_REF_NAME" "$GITHUB_SHA"
+      - name: Export Windows
+        run: |
+          set -euo pipefail
+          mkdir -p build/windows
+          godot --headless --import >/dev/null 2>&1 || true
+          godot --headless --export-release "Windows" build/windows/bus-driver.exe
+          test -s build/windows/bus-driver.exe
+          grep -aq 'route_seoul-100.json' build/windows/bus-driver.pck
+          if grep -aq 'osm_cache' build/windows/bus-driver.pck; then echo 'osm_cache 가 pck 에 들어갔다'; exit 1; fi
+          cd build/windows && zip -q ../bus-driver-windows.zip ./*
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: build/bus-driver-windows.zip
+          retention-days: 7
+
+  macos:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: test
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cache export templates
+        id: templates
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Application Support/Godot/export_templates
+          key: godot-macos-templates-${{ env.GODOT_VERSION }}
+      - name: Install Godot
+        run: |
+          set -euo pipefail
+          base="https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable"
+          curl -fsSL -o godot.zip "$base/Godot_v${GODOT_VERSION}-stable_macos.universal.zip"
+          unzip -q godot.zip
+          echo "GODOT_BIN=$PWD/Godot.app/Contents/MacOS/Godot" >> "$GITHUB_ENV"
+      - name: Install export templates
+        if: steps.templates.outputs.cache-hit != 'true'
+        run: |
+          set -euo pipefail
+          base="https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable"
+          curl -fsSL -o templates.tpz "$base/Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
+          dest="$HOME/Library/Application Support/Godot/export_templates/${GODOT_VERSION}.stable"
+          mkdir -p "$dest"
+          unzip -q -o -j templates.tpz 'templates/macos.zip' 'templates/version.txt' -d "$dest"
+      - name: Set version
+        run: python3 tools/set_version.py "$GITHUB_REF_NAME" "$GITHUB_SHA"
+      - name: Export macOS
+        run: |
+          set -euo pipefail
+          mkdir -p build
+          "$GODOT_BIN" --headless --import >/dev/null 2>&1 || true
+          "$GODOT_BIN" --headless --export-release "macOS" build/bus-driver-macos.zip
+          test -s build/bus-driver-macos.zip
+      # ad-hoc 서명이 붙었는지 본다. 없으면 Apple Silicon 에서 아예 안 열린다.
+      - name: Check signature
+        run: |
+          set -euo pipefail
+          mkdir -p build/check && cd build/check && unzip -q ../bus-driver-macos.zip
+          codesign -dv ./*.app 2>&1 | tee sig.txt
+          grep -q 'Signature=adhoc' sig.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos
+          path: build/bus-driver-macos.zip
+          retention-days: 7
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [android, windows, macos]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+      - name: Create release
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          mv dist/apk/bus-driver.apk "bus-driver-${version}.apk"
+          mv dist/windows/bus-driver-windows.zip "bus-driver-${version}-windows.zip"
+          mv dist/macos/bus-driver-macos.zip "bus-driver-${version}-macos.zip"
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --generate-notes \
+            "bus-driver-${version}.apk" "bus-driver-${version}-windows.zip" "bus-driver-${version}-macos.zip"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
