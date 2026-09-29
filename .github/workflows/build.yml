@@ -1,6 +1,6 @@
 name: Build
 
-# 브랜치 push: 테스트 + 안드로이드 빌드(로컬에 SDK 가 없어 이것이 유일한 검증).
+# 브랜치 push: 테스트 + 웹 빌드를 GitHub Pages 에 배포.
 # v* 태그 push: 세 플랫폼 빌드 후 GitHub Release 에 올린다.
 on:
   push:
@@ -38,7 +38,9 @@ jobs:
         env:
           GODOT: /usr/local/bin/godot
 
+  # 서명 키 secret 을 아직 등록하지 않았다. 등록하기 전까지 태그에서만 돈다.
   android:
+    if: startsWith(github.ref, 'refs/tags/v')
     needs: test
     runs-on: ubuntu-latest
     steps:
@@ -241,3 +243,116 @@ jobs:
             "bus-driver-${version}.apk" "bus-driver-${version}-windows.zip" "bus-driver-${version}-macos.zip"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # 어느 브랜치를 밀어도 배포한다. Pages 는 저장소당 사이트가 하나뿐이라 브랜치
+  # 빌드가 라이브를 덮어쓴다. 타이틀 하단 버전에 커밋 해시가 찍혀 구분된다.
+  web:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache export templates
+        id: templates
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/godot/export_templates
+          key: godot-web-templates-${{ env.GODOT_VERSION }}
+
+      - name: Install Godot
+        run: |
+          set -euo pipefail
+          base="https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable"
+          curl -fsSL -o godot.zip "$base/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          unzip -q godot.zip
+          install -m 755 "Godot_v${GODOT_VERSION}-stable_linux.x86_64" /usr/local/bin/godot
+
+      - name: Install export templates
+        if: steps.templates.outputs.cache-hit != 'true'
+        run: |
+          set -euo pipefail
+          base="https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable"
+          curl -fsSL -o templates.tpz "$base/Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
+          dest="$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable"
+          mkdir -p "$dest"
+          unzip -q -o -j templates.tpz 'templates/web_*.zip' 'templates/version.txt' -d "$dest"
+
+      - run: python3 tools/set_version.py "$GITHUB_REF_NAME" "$GITHUB_SHA"
+
+      # 빌드 파일 이름에 커밋 해시를 넣는다. wasm 과 pck 가 80MB 라 브라우저가 오래
+      # 붙잡는데, URL 자체가 바뀌면 옛 캐시가 끼어들 수 없다. 고정 주소인
+      # index.html 은 version.txt 를 매번 새로 읽어 그 빌드를 iframe 에 띄운다.
+      # index.html 에 빌드 이름을 박으면 캐시된 옛 index.html 이 지워진 파일을 부른다.
+      - name: Export Web
+        run: |
+          set -euo pipefail
+          name="bus-driver-${GITHUB_SHA::7}"
+          mkdir -p build/web
+          godot --headless --import >/dev/null 2>&1 || true
+          godot --headless --export-release "Web" "build/web/$name.html"
+          test -s "build/web/$name.wasm"
+          test -s "build/web/$name.pck"
+          printf '%s' "$name" > build/web/version.txt
+          cp "build/web/$name.apple-touch-icon.png" build/web/apple-touch-icon.png
+          cp "build/web/$name.icon.png" build/web/favicon.png
+          cat > build/web/index.html <<'HTML'
+          <!DOCTYPE html>
+          <html lang="ko">
+          <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+          <meta name="apple-mobile-web-app-capable" content="yes">
+          <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+          <meta name="apple-mobile-web-app-title" content="버스 운전">
+          <link rel="icon" href="favicon.png">
+          <link rel="apple-touch-icon" href="apple-touch-icon.png">
+          <title>버스 운전</title>
+          <style>
+          /* html 과 body 가 크기를 가져야 iframe 의 100% 가 화면을 채운다. */
+          html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #111; }
+          iframe { border: 0; width: 100%; height: 100%; display: block; }
+          #msg { color: #999; font: 16px -apple-system, sans-serif; padding: 24px; }
+          </style>
+          </head>
+          <body><div id="msg">불러오는 중…</div>
+          <script>
+          fetch("version.txt?t=" + Date.now(), { cache: "no-store" })
+            .then(function (r) { return r.text(); })
+            .then(function (v) {
+              var f = document.createElement("iframe");
+              f.src = v.trim() + ".html";
+              f.allow = "autoplay; fullscreen; gamepad";
+              document.body.textContent = "";
+              document.body.appendChild(f);
+            })
+            .catch(function () {
+              document.getElementById("msg").textContent = "불러오지 못했다. 새로고침.";
+            });
+          </script>
+          </body>
+          </html>
+          HTML
+          rm -f build/web/*.import
+          touch build/web/.nojekyll
+          ls -la build/web
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/web
+
+  pages:
+    needs: web
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    # 배포가 겹치면 나중 것만 살린다. 진행 중인 배포는 끊지 않는다.
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
