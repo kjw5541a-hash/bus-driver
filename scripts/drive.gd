@@ -154,6 +154,7 @@ func _ready() -> void:
 		get_tree().reload_current_scene())
 	result.retry_requested.connect(func() -> void: get_tree().reload_current_scene())
 	result.menu_requested.connect(func() -> void:
+		Menu.skip_title = true
 		get_tree().change_scene_to_file("res://scenes/menu.tscn"))
 
 func route_id_from_args() -> String:
